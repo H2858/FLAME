@@ -329,6 +329,53 @@ class SoundManager {
     }
   }
 
+  /** Short steel-on-scabbard rasp, layered with a bright blade ring. */
+  public playKatanaDraw() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      const noise = this.ctx.createBufferSource();
+      const buffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.24), this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass'; filter.frequency.setValueAtTime(3100, t); filter.Q.value = 0.8;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, t); gain.gain.linearRampToValueAtTime(0.17, t + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+      noise.connect(filter); filter.connect(gain); gain.connect(this.sfxGain); noise.start(t);
+      const ring = this.ctx.createOscillator(); const ringGain = this.ctx.createGain();
+      ring.type = 'sine'; ring.frequency.setValueAtTime(1450, t + 0.04);
+      ring.frequency.exponentialRampToValueAtTime(720, t + 0.28);
+      ringGain.gain.setValueAtTime(0.07, t + 0.04); ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      ring.connect(ringGain); ringGain.connect(this.sfxGain); ring.start(t + 0.04); ring.stop(t + 0.31);
+    } catch { /* audio is optional */ }
+  }
+
+  /** Distant, restrained raven call for the moonlit atmosphere. */
+  public playCrowCall() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      [0, 0.19].forEach((offset, i) => {
+        const osc = this.ctx!.createOscillator(); const gain = this.ctx!.createGain();
+        const filter = this.ctx!.createBiquadFilter();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(i === 0 ? 620 : 510, t + offset);
+        osc.frequency.exponentialRampToValueAtTime(i === 0 ? 390 : 330, t + offset + 0.28);
+        filter.type = 'lowpass'; filter.frequency.value = 1150;
+        gain.gain.setValueAtTime(0.001, t + offset);
+        gain.gain.linearRampToValueAtTime(0.045, t + offset + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.31);
+        osc.connect(filter); filter.connect(gain); gain.connect(this.sfxGain!);
+        osc.start(t + offset); osc.stop(t + offset + 0.32);
+      });
+    } catch { /* audio is optional */ }
+  }
+
   /**
    * Crisp Katana / Azure Blade Slashes with FM body and air whoosh.
    */
@@ -336,6 +383,7 @@ class SoundManager {
     this.init();
     if (!this.ctx || !this.sfxGain) return;
     this.triggerHaptics(comboIndex === 2 ? [30, 25, 45] : 14);
+    if (comboIndex === 0) this.playKatanaDraw();
 
     try {
       const t = this.ctx.currentTime;

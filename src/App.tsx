@@ -8,7 +8,7 @@ import { GameCanvas } from './components/GameCanvas';
 import { GameEngine2D, DamageNumber, Enemy2D } from './game/GameEngine2D';
 import { TitleScreen } from './components/TitleScreen';
 import { HUD } from './components/HUD';
-import { MobileControls } from './components/MobileControls';
+import { TouchGestureControls } from './components/TouchGestureControls';
 import { PauseMenu } from './components/PauseMenu';
 import { StageSelectModal } from './components/StageSelectModal';
 import { UpgradeModal } from './components/UpgradeModal';
@@ -318,12 +318,8 @@ export default function App() {
             onPause={() => setGameState('paused')}
           />
 
-          {/* Android Virtual Touch Controls */}
-          <MobileControls
-            engine={engineRef.current}
-            layout={settings.controlsLayout}
-            cooldowns={cooldowns}
-          />
+          {/* Invisible gesture controls: drag to move, tap to slash, flick to jump/dash. */}
+          <TouchGestureControls engine={engineRef.current} />
         </>
       )}
 

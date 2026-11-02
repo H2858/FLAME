@@ -169,6 +169,10 @@ export class GameEngine2D {
   public meteors: Meteor2D[] = [];
   private meteorSpawnTimer = 1.8;
 
+  // Distant ravens crossing the moon at irregular intervals.
+  private crows: Array<{ x: number; y: number; speed: number; scale: number; phase: number; direction: 1 | -1 }> = [];
+  private crowSpawnTimer = 5 + Math.random() * 7;
+
   // Collectible Tokens in the World
   public worldTokens: WorldToken2D[] = [];
 
@@ -196,6 +200,7 @@ export class GameEngine2D {
   // 3-Hit Combo Slash
   public isSlashing = false;
   public slashStep = 0;
+  public activeSlashStep = 0;
   public slashTimer = 0;
   public comboStreak = 0;
   public comboResetTimer = 0;
@@ -465,6 +470,7 @@ export class GameEngine2D {
     this.comboResetTimer = 1.0;
 
     const step = this.slashStep;
+    this.activeSlashStep = step;
     this.slashStep = (this.slashStep + 1) % 3;
 
     const isHeavy = step === 2;
@@ -1017,6 +1023,7 @@ export class GameEngine2D {
     // 1. Update Low Misty Eyes & Celestial Meteors
     this.updateLowEyes(dt);
     this.updateMeteors(dt);
+    this.updateCrows(dt);
     this.updateWorldTokens(dt);
 
     // 2. Family Reunion Check & CINEMATIC ZOOM
@@ -1615,6 +1622,8 @@ export class GameEngine2D {
 
     // 2. CELESTIAL METEORS & SHOOTING STARS (نيازك وشهب تمر في السماء)
     this.renderMeteors(ctx);
+    // Ravens are rendered in screen space so they visibly cross in front of the moon.
+    this.renderCrows(ctx);
 
     // 3. Distant Misty Mountain Silhouettes (Parallax 0.06)
     ctx.save();
@@ -1763,6 +1772,65 @@ export class GameEngine2D {
     }
 
     ctx.restore();
+  }
+
+  /** Spawn and animate occasional ravens across the moonlit sky. */
+  private updateCrows(dt: number) {
+    this.crowSpawnTimer -= dt;
+    if (this.crowSpawnTimer <= 0) {
+      const direction: 1 | -1 = Math.random() > 0.5 ? 1 : -1;
+      this.crows.push({
+        x: direction === 1 ? -55 : window.innerWidth + 55,
+        y: 75 + Math.random() * 145,
+        speed: 72 + Math.random() * 58,
+        scale: 0.55 + Math.random() * 0.65,
+        phase: Math.random() * Math.PI * 2,
+        direction,
+      });
+      if (Math.random() < 0.42) soundManager.playCrowCall();
+      this.crowSpawnTimer = 7 + Math.random() * 11;
+    }
+    for (const crow of this.crows) {
+      crow.x += crow.speed * crow.direction * dt;
+      crow.phase += dt * (8 + crow.speed * 0.025);
+      crow.y += Math.sin(crow.phase * 0.22) * 2.2 * dt;
+    }
+    this.crows = this.crows.filter(c => c.direction === 1 ? c.x < window.innerWidth + 90 : c.x > -90);
+  }
+
+  /** Elegant near-black raven silhouettes with articulated, flapping wings. */
+  private renderCrows(ctx: CanvasRenderingContext2D) {
+    for (const crow of this.crows) {
+      const flap = Math.sin(crow.phase) * 0.72;
+      ctx.save();
+      ctx.translate(crow.x, crow.y);
+      ctx.scale(crow.scale * crow.direction, crow.scale);
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle = '#02040a';
+      ctx.shadowColor = 'rgba(0,0,0,0.65)';
+      ctx.shadowBlur = 5;
+      // Body and pointed tail
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 4, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-7, 1); ctx.lineTo(-20, 5); ctx.lineTo(-10, -2); ctx.closePath(); ctx.fill();
+      // Head and beak
+      ctx.beginPath(); ctx.arc(9, -2, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(11, -3); ctx.lineTo(18, -1); ctx.lineTo(11, 0); ctx.closePath(); ctx.fill();
+      // Wings fold down and sweep up in a natural alternating flap.
+      ctx.beginPath();
+      ctx.moveTo(-2, -1);
+      ctx.quadraticCurveTo(-13, -9 - flap * 12, -27, -5 - flap * 18);
+      ctx.quadraticCurveTo(-18, 1 - flap * 5, -5, 3);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(2, -1);
+      ctx.quadraticCurveTo(12, -9 - flap * 12, 26, -5 - flap * 18);
+      ctx.quadraticCurveTo(17, 1 - flap * 5, 5, 3);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
 
   /**
@@ -2038,27 +2106,47 @@ export class GameEngine2D {
     ctx.arc(10, -4, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // 5. Floating Azure Blade (Only during battle and not in rocket flight)
+    // 5. Katana-style sword draw and three distinct cinematic cutting arcs.
     if (!this.isReunited && !this.isHorizontalFlightActive) {
       ctx.save();
-      const bladeOffset = this.isSlashing ? 38 : 25;
-      const bladeRot = this.isSlashing
-        ? this.slashStep === 0
-          ? -1.3
-          : this.slashStep === 1
-          ? 1.3
-          : 0
-        : Math.sin(this.flameTimer * 4) * 0.16;
+      const progress = this.isSlashing ? Math.max(0, Math.min(1, 1 - this.slashTimer / 0.18)) : 0;
+      const bladeOffset = this.isSlashing ? 34 + Math.sin(progress * Math.PI) * 13 : 25;
+      const idleAngle = Math.sin(this.flameTimer * 2.8) * 0.09;
+      const bladeRot = !this.isSlashing ? idleAngle : this.activeSlashStep === 1
+        ? 1.95 - progress * 3.75
+        : this.activeSlashStep === 2 ? -2.35 + progress * 4.65 : -1.75 + progress * 3.05;
+      ctx.translate(bladeOffset, -7);
 
-      ctx.translate(bladeOffset, -5);
+      if (this.isSlashing) {
+        // Crescent trail follows the blade tip; heavy finisher gets a wider, brighter arc.
+        ctx.save();
+        ctx.rotate(bladeRot - (this.activeSlashStep === 1 ? 0.72 : -0.72));
+        ctx.strokeStyle = this.activeSlashStep === 0 ? 'rgba(125,211,252,0.72)' : 'rgba(224,242,254,0.9)';
+        ctx.lineWidth = this.activeSlashStep === 2 ? 8 : 5;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = this.activeSlashStep === 2 ? 26 : 16;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.activeSlashStep === 2 ? 67 : 57, -1.05, 0.78);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.rotate(bladeRot);
-      ctx.fillStyle = '#e0f2fe';
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 18;
-      ctx.fillRect(0, -28, 6, 50);
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(-6, 22, 18, 5);
-      ctx.fillRect(0, 27, 6, 12);
+      // Polished katana blade with a bright edge and dark wrapped grip.
+      ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = 20;
+      const bladeGrad = ctx.createLinearGradient(0, -58, 7, -8);
+      bladeGrad.addColorStop(0, '#ffffff'); bladeGrad.addColorStop(0.45, '#bae6fd'); bladeGrad.addColorStop(1, '#64748b');
+      ctx.fillStyle = bladeGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, -58); ctx.lineTo(7, -52); ctx.lineTo(6, -8); ctx.lineTo(1, -3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(2, -53); ctx.lineTo(2, -10); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.fillStyle = '#172033';
+      ctx.fillRect(-7, -7, 20, 4);
+      ctx.fillStyle = '#94a3b8'; ctx.fillRect(-1, -3, 7, 15);
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+      for (let wrap = 0; wrap < 3; wrap++) { ctx.beginPath(); ctx.moveTo(-1, wrap * 4); ctx.lineTo(6, wrap * 4 + 3); ctx.stroke(); }
       ctx.restore();
     }
 

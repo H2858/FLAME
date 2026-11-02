@@ -7,7 +7,7 @@ import React from 'react';
 import { Language, PlayerStats } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { DamageNumber, Enemy2D } from '../game/GameEngine2D';
-import { Flame, Sparkles, Pause, ShieldAlert } from 'lucide-react';
+import { Flame, Sparkles, Pause, ShieldAlert, CircleHelp } from 'lucide-react';
 
 interface HUDProps {
   lang: Language;
@@ -21,6 +21,7 @@ interface HUDProps {
   damageNumbers: DamageNumber[];
   flightTime?: number;
   onPause: () => void;
+  onHelp: () => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -35,6 +36,7 @@ export const HUD: React.FC<HUDProps> = ({
   damageNumbers,
   flightTime = 0,
   onPause,
+  onHelp,
 }) => {
   const t = TRANSLATIONS[lang];
   const hpPercent = Math.max(0, Math.min(100, (stats.hp / stats.maxHp) * 100));
@@ -126,6 +128,15 @@ export const HUD: React.FC<HUDProps> = ({
               {kills} / {targetKills}
             </span>
           </div>
+
+          {/* Quick tutorial / controls guide */}
+          <button
+            onClick={onHelp}
+            className="pointer-events-auto p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-cyan-500/30 text-cyan-200 active:scale-95 transition-transform shadow-lg"
+            aria-label="Controls guide"
+          >
+            <CircleHelp className="w-5 h-5" />
+          </button>
 
           {/* Pause Button */}
           <button

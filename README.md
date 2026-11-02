@@ -18,3 +18,7 @@ View your app in AI Studio: https://ai.studio/apps/89dba158-80d6-445f-9580-588e3
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+
+## Update 2 — Responsive touch combat
+The left half controls movement and mobility; the right half attacks immediately and supports held/swept katana cuts. Multi-touch allows simultaneous running and sword combat. A first-run tutorial explains all gestures and abilities. The 20-stage route has four boss gates with distinct boss attack patterns and richer procedural enemy animation.

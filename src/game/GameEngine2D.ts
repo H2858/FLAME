@@ -196,12 +196,15 @@ export class GameEngine2D {
   public dashCooldown = 0;
   public novaCooldown = 0;
   public novaEnergy = 100;
+  private orbitalWispCooldown = 0;
 
   // 3-Hit Combo Slash
   public isSlashing = false;
   public slashStep = 0;
   public activeSlashStep = 0;
   public slashTimer = 0;
+  public slashCooldownTimer = 0;
+  public slashDirection: 'horizontal' | 'rising' | 'descending' = 'horizontal';
   public comboStreak = 0;
   public comboResetTimer = 0;
 
@@ -271,27 +274,28 @@ export class GameEngine2D {
   };
 
   // 20 Progressive Stages
+  // 20-stage journey in four escalating acts. Every fifth stage is a named boss gate.
   public stages: StageDefinition[] = [
-    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 10, enemyTypes: ['crimson_wisp'], isBossStage: false, difficultyScale: 1.0 },
-    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 14, enemyTypes: ['crimson_wisp', 'pyro_wolf'], isBossStage: false, difficultyScale: 1.15 },
-    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 16, enemyTypes: ['crimson_wisp', 'pyro_wolf', 'crimson_wraith'], isBossStage: false, difficultyScale: 1.3 },
-    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 18, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], isBossStage: false, difficultyScale: 1.45 },
-    { id: 5, nameKey: 'stage_5', descriptionKey: 'stage_5_desc', themeColor: '#ef4444', targetKills: 20, enemyTypes: ['pyro_wolf', 'crimson_wraith'], bossType: 'pyro_wolf', isBossStage: true, difficultyScale: 1.6 },
-    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 22, enemyTypes: ['crimson_wisp', 'magma_floater', 'magma_golem'], isBossStage: false, difficultyScale: 1.75 },
-    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 24, enemyTypes: ['pyro_serpent', 'magma_floater'], isBossStage: false, difficultyScale: 1.9 },
-    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 26, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'ignis_knight'], isBossStage: false, difficultyScale: 2.05 },
-    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 28, enemyTypes: ['ignis_knight', 'pyro_wolf'], isBossStage: false, difficultyScale: 2.2 },
-    { id: 10, nameKey: 'stage_10', descriptionKey: 'stage_10_desc', themeColor: '#dc2626', targetKills: 30, enemyTypes: ['ignis_knight', 'magma_golem'], bossType: 'magma_golem', isBossStage: true, difficultyScale: 2.4 },
-    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 30, enemyTypes: ['pyre_drake', 'crimson_wisp'], isBossStage: false, difficultyScale: 2.55 },
-    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 32, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], isBossStage: false, difficultyScale: 2.7 },
-    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 34, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], isBossStage: false, difficultyScale: 2.85 },
-    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 36, enemyTypes: ['dark_pyromancer', 'ignis_knight'], isBossStage: false, difficultyScale: 3.0 },
-    { id: 15, nameKey: 'stage_15', descriptionKey: 'stage_15_desc', themeColor: '#b91c1c', targetKills: 38, enemyTypes: ['pyro_serpent', 'dark_pyromancer'], bossType: 'pyro_serpent', isBossStage: true, difficultyScale: 3.2 },
-    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 40, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.4 },
-    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 42, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.65 },
-    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 44, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], isBossStage: false, difficultyScale: 3.9 },
-    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 46, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], isBossStage: false, difficultyScale: 4.2 },
-    { id: 20, nameKey: 'stage_20', descriptionKey: 'stage_20_desc', themeColor: '#e11d48', targetKills: 50, enemyTypes: ['ignis_knight', 'dark_pyromancer'], bossType: 'abyssal_sovereign', isBossStage: true, difficultyScale: 4.8 },
+    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 8, enemyTypes: ['crimson_wisp'], isBossStage: false, difficultyScale: 1.0 },
+    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 10, enemyTypes: ['crimson_wisp', 'pyro_wolf'], isBossStage: false, difficultyScale: 1.12 },
+    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 11, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], isBossStage: false, difficultyScale: 1.25 },
+    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 12, enemyTypes: ['crimson_wraith', 'magma_floater', 'pyro_wolf'], isBossStage: false, difficultyScale: 1.38 },
+    { id: 5, nameKey: 'stage_5', descriptionKey: 'stage_5_desc', themeColor: '#ef4444', targetKills: 14, enemyTypes: ['pyro_wolf', 'crimson_wraith', 'ignis_knight'], bossType: 'ignis_knight', isBossStage: true, difficultyScale: 1.52 },
+    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 14, enemyTypes: ['magma_floater', 'magma_golem', 'crimson_wisp'], isBossStage: false, difficultyScale: 1.66 },
+    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 15, enemyTypes: ['pyro_serpent', 'magma_floater'], isBossStage: false, difficultyScale: 1.8 },
+    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 16, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'pyre_drake'], isBossStage: false, difficultyScale: 1.95 },
+    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 17, enemyTypes: ['ignis_knight', 'pyro_wolf', 'dark_pyromancer'], isBossStage: false, difficultyScale: 2.1 },
+    { id: 10, nameKey: 'stage_10', descriptionKey: 'stage_10_desc', themeColor: '#dc2626', targetKills: 18, enemyTypes: ['ignis_knight', 'magma_golem', 'pyre_drake'], bossType: 'magma_golem', isBossStage: true, difficultyScale: 2.28 },
+    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 18, enemyTypes: ['pyre_drake', 'crimson_wisp', 'pyro_serpent'], isBossStage: false, difficultyScale: 2.42 },
+    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 19, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], isBossStage: false, difficultyScale: 2.58 },
+    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 20, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], isBossStage: false, difficultyScale: 2.74 },
+    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 21, enemyTypes: ['dark_pyromancer', 'ignis_knight', 'pyre_drake'], isBossStage: false, difficultyScale: 2.9 },
+    { id: 15, nameKey: 'stage_15', descriptionKey: 'stage_15_desc', themeColor: '#b91c1c', targetKills: 22, enemyTypes: ['pyro_serpent', 'dark_pyromancer', 'magma_golem'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.08 },
+    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 22, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.24 },
+    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 23, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.42 },
+    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 24, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], isBossStage: false, difficultyScale: 3.62 },
+    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 25, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], isBossStage: false, difficultyScale: 3.84 },
+    { id: 20, nameKey: 'stage_20', descriptionKey: 'stage_20_desc', themeColor: '#7f1d1d', targetKills: 26, enemyTypes: ['ignis_knight', 'dark_pyromancer', 'pyre_drake'], bossType: 'abyssal_sovereign', isBossStage: true, difficultyScale: 4.1 },
   ];
 
   public settings: GameSettings;
@@ -462,11 +466,13 @@ export class GameEngine2D {
     }
   }
 
-  public performAttack() {
-    if (this.isSlashing || this.stats.hp <= 0 || this.isReunited) return;
+  public performAttack(direction: 'horizontal' | 'rising' | 'descending' = 'horizontal') {
+    if (this.slashCooldownTimer > 0 || this.stats.hp <= 0 || this.isReunited) return;
 
     this.isSlashing = true;
-    this.slashTimer = 0.18;
+    this.slashTimer = 0.25;
+    this.slashCooldownTimer = 0.19;
+    this.slashDirection = direction;
     this.comboResetTimer = 1.0;
 
     const step = this.slashStep;
@@ -480,10 +486,10 @@ export class GameEngine2D {
     soundManager.playSlash(step);
     this.vx += this.facing * (isHeavy ? 300 : 190);
 
-    const hitWidth = isHeavy ? 140 : 100;
-    const hitHeight = 90;
-    const hitX = this.facing === 1 ? this.x + 10 : this.x - hitWidth - 10;
-    const hitY = this.y - hitHeight / 2;
+    const hitWidth = isHeavy ? 150 : 112;
+    const hitHeight = direction === 'horizontal' ? 96 : 132;
+    const hitX = this.facing === 1 ? this.x + 8 : this.x - hitWidth - 8;
+    const hitY = this.y + (direction === 'rising' ? -105 : direction === 'descending' ? -8 : -hitHeight / 2);
 
     let hitCount = 0;
     for (const enemy of this.enemies) {
@@ -959,14 +965,14 @@ export class GameEngine2D {
     const diff = this.stages[this.currentStageIndex].difficultyScale;
     let width = 120;
     let height = 140;
-    let hp = Math.round(750 * diff);
-    let attackPower = Math.round(32 * diff);
+    let hp = Math.round(900 * diff);
+    let attackPower = Math.round(34 * diff);
 
     if (bossType === 'abyssal_sovereign') {
       width = 160;
       height = 180;
-      hp = Math.round(1400 * diff);
-      attackPower = Math.round(45 * diff);
+      hp = Math.round(1650 * diff);
+      attackPower = Math.round(48 * diff);
     }
 
     this.enemies.push({
@@ -1210,6 +1216,9 @@ export class GameEngine2D {
       if (this.parryTimer <= 0) this.isParrying = false;
     }
 
+    this.slashCooldownTimer = Math.max(0, this.slashCooldownTimer - dt);
+    this.orbitalWispCooldown = Math.max(0, this.orbitalWispCooldown - dt);
+
     if (this.isSlashing) {
       this.slashTimer -= dt;
       if (this.slashTimer <= 0) this.isSlashing = false;
@@ -1296,7 +1305,17 @@ export class GameEngine2D {
 
       if (p.isEnemy) {
         if (Math.hypot(p.x - this.x, p.y - this.y) < p.radius + 22) {
-          this.damagePlayer(p.damage);
+          if (this.skills.orbitalWisps > 1 && this.orbitalWispCooldown <= 0) {
+            this.orbitalWispCooldown = Math.max(1.8, 6.2 - (this.skills.orbitalWisps - 1) * 0.65);
+            soundManager.playBlast();
+            this.addScreenShake(3);
+            for (let spark = 0; spark < 12; spark++) {
+              const a = (spark / 12) * Math.PI * 2;
+              this.particles.push({ x: this.x, y: this.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, size: 4, color: '#67e8f9', alpha: 1, life: 0.3, maxLife: 0.3, shape: 'spark' });
+            }
+          } else {
+            this.damagePlayer(p.damage);
+          }
           this.projectiles.splice(i, 1);
           continue;
         }
@@ -1545,10 +1564,51 @@ export class GameEngine2D {
   }
 
   private executeEnemyAttack(enemy: Enemy2D) {
-    const dist = Math.hypot(this.x - enemy.x, this.y - enemy.y);
-    if (dist <= enemy.attackRange + 35) {
-      this.damagePlayer(enemy.attackPower);
+    const dx = this.x - enemy.x;
+    const dy = this.y - enemy.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (enemy.isBoss && (enemy.type === 'dark_pyromancer' || enemy.type === 'abyssal_sovereign' || enemy.type === 'pyro_serpent')) {
+      // Bosses use readable, aimed projectile patterns instead of relying only on contact damage.
+      const baseAngle = Math.atan2(dy, dx);
+      const count = enemy.type === 'abyssal_sovereign' ? 3 : 1;
+      for (let i = 0; i < count; i++) {
+        const spread = count === 1 ? 0 : (i - 1) * 0.22;
+        const angle = baseAngle + spread;
+        const speed = enemy.type === 'abyssal_sovereign' ? 360 : 300;
+        this.projectiles.push({
+          id: this.nextEntityId++, x: enemy.x + Math.cos(angle) * 35, y: enemy.y - 10,
+          vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+          radius: enemy.type === 'abyssal_sovereign' ? 14 : 11,
+          damage: Math.round(enemy.attackPower * (enemy.type === 'abyssal_sovereign' ? 0.72 : 0.62)),
+          life: 3.2, isEnemy: true,
+          color: enemy.type === 'dark_pyromancer' ? '#c084fc' : '#fb7185',
+        });
+      }
+      soundManager.playBlast();
+      return;
     }
+
+    if (enemy.isBoss && enemy.type === 'magma_golem') {
+      // Heavy telegraphed ground slam with a wide shockwave radius.
+      this.addScreenShake(13);
+      soundManager.playNova();
+      if (dist <= enemy.attackRange + 210) this.damagePlayer(Math.round(enemy.attackPower * 1.18));
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        this.particles.push({ x: enemy.x, y: this.groundY - 8, vx: Math.cos(a) * (220 + Math.random() * 100), vy: -Math.random() * 90, size: 5 + Math.random() * 5, color: '#fb923c', alpha: 1, life: 0.42, maxLife: 0.42, shape: 'spark' });
+      }
+      return;
+    }
+
+    if (enemy.isBoss && enemy.type === 'ignis_knight') {
+      enemy.vx = enemy.facing * 560;
+      if (dist <= enemy.attackRange + 85) this.damagePlayer(Math.round(enemy.attackPower * 1.12));
+      this.addScreenShake(7);
+      return;
+    }
+
+    if (dist <= enemy.attackRange + 35) this.damagePlayer(enemy.attackPower);
   }
 
   private checkLevelUp() {
@@ -2071,6 +2131,24 @@ export class GameEngine2D {
       ctx.scale(scaleX * this.facing, scaleY);
     }
 
+    // Orbital Wisps: unlockable rotating guard-blades around the hero.
+    if (this.skills.orbitalWisps > 1 && !this.isHorizontalFlightActive) {
+      const wispCount = Math.min(5, 2 + this.skills.orbitalWisps);
+      for (let i = 0; i < wispCount; i++) {
+        const angle = this.flameTimer * 2.4 + (i / wispCount) * Math.PI * 2;
+        const ox = Math.cos(angle) * 43;
+        const oy = -4 + Math.sin(angle) * 25;
+        ctx.save(); ctx.translate(ox, oy); ctx.rotate(angle + Math.PI / 2);
+        ctx.fillStyle = '#a5f3fc'; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(5, 0); ctx.lineTo(0, 10); ctx.lineTo(-5, 0); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+      }
+      if (this.orbitalWispCooldown > 0) {
+        ctx.strokeStyle = 'rgba(103,232,249,0.35)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(0, 0, 51, 34, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
     // 1. Outer Sapphire Flame Aura
     ctx.fillStyle = 'rgba(2, 132, 199, 0.75)';
     ctx.beginPath();
@@ -2109,12 +2187,16 @@ export class GameEngine2D {
     // 5. Katana-style sword draw and three distinct cinematic cutting arcs.
     if (!this.isReunited && !this.isHorizontalFlightActive) {
       ctx.save();
-      const progress = this.isSlashing ? Math.max(0, Math.min(1, 1 - this.slashTimer / 0.18)) : 0;
-      const bladeOffset = this.isSlashing ? 34 + Math.sin(progress * Math.PI) * 13 : 25;
+      const progress = this.isSlashing ? Math.max(0, Math.min(1, 1 - this.slashTimer / 0.25)) : 0;
+      const bladeOffset = this.isSlashing ? 34 + Math.sin(progress * Math.PI) * 17 : 25;
       const idleAngle = Math.sin(this.flameTimer * 2.8) * 0.09;
-      const bladeRot = !this.isSlashing ? idleAngle : this.activeSlashStep === 1
-        ? 1.95 - progress * 3.75
-        : this.activeSlashStep === 2 ? -2.35 + progress * 4.65 : -1.75 + progress * 3.05;
+      const bladeRot = !this.isSlashing ? idleAngle : this.slashDirection === 'rising'
+        ? 1.55 - progress * 3.1
+        : this.slashDirection === 'descending'
+          ? -1.55 + progress * 3.1
+          : this.activeSlashStep === 1
+            ? 1.95 - progress * 3.75
+            : this.activeSlashStep === 2 ? -2.35 + progress * 4.65 : -1.75 + progress * 3.05;
       ctx.translate(bladeOffset, -7);
 
       if (this.isSlashing) {
@@ -2127,7 +2209,9 @@ export class GameEngine2D {
         ctx.shadowColor = '#38bdf8';
         ctx.shadowBlur = this.activeSlashStep === 2 ? 26 : 16;
         ctx.beginPath();
-        ctx.arc(0, 0, this.activeSlashStep === 2 ? 67 : 57, -1.05, 0.78);
+        const arcStart = this.slashDirection === 'rising' ? -2.05 : this.slashDirection === 'descending' ? -0.25 : -1.05;
+        const arcEnd = this.slashDirection === 'rising' ? 0.55 : this.slashDirection === 'descending' ? 2.05 : 0.78;
+        ctx.arc(0, 0, this.activeSlashStep === 2 ? 72 : 61, arcStart, arcEnd);
         ctx.stroke();
         ctx.restore();
       }
@@ -2170,13 +2254,46 @@ export class GameEngine2D {
   private renderMasterpieceEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy2D) {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
-    ctx.scale(enemy.facing, 1);
-
     const isFlashing = enemy.flashTimer > 0;
     const isWindup = enemy.state === 'windup';
     const breath = Math.sin(enemy.animTimer * 6) * 3;
+    const runBob = enemy.state === 'chase' ? Math.abs(Math.sin(enemy.animTimer * 10)) * 3.5 : 0;
     const flicker1 = Math.sin(this.flameTimer * 18 + enemy.id) * 4;
     const flicker2 = Math.cos(this.flameTimer * 24 + enemy.id) * 5;
+
+    // Ground contact shadow and a distinct boss arena aura, both animated independently.
+    ctx.save();
+    ctx.globalAlpha = enemy.isBoss ? 0.38 : 0.22;
+    ctx.fillStyle = enemy.isBoss ? '#fb7185' : '#020617';
+    ctx.shadowColor = enemy.isBoss ? '#f43f5e' : '#000000';
+    ctx.shadowBlur = enemy.isBoss ? 30 : 12;
+    ctx.beginPath();
+    ctx.ellipse(0, enemy.height * 0.42, enemy.width * (enemy.isBoss ? 0.9 : 0.62), enemy.isBoss ? 13 : 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (enemy.isBoss) {
+      const pulse = 1 + Math.sin(enemy.animTimer * 2.6) * 0.07;
+      ctx.strokeStyle = 'rgba(251,113,133,0.62)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#fb7185'; ctx.shadowBlur = 22;
+      ctx.beginPath(); ctx.ellipse(0, enemy.height * 0.37, enemy.width * 0.72 * pulse, 18 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = enemy.animTimer * 0.8 + i * Math.PI / 2;
+        const ox = Math.cos(a) * enemy.width * 0.72;
+        const oy = -enemy.height * 0.18 + Math.sin(a) * 18;
+        ctx.fillStyle = i % 2 ? '#fbbf24' : '#fb7185';
+        ctx.beginPath(); ctx.arc(ox, oy, 3.2 + Math.sin(enemy.animTimer * 5 + i) * 1.2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    if (isWindup) {
+      ctx.strokeStyle = 'rgba(248,113,113,0.8)'; ctx.lineWidth = 3; ctx.setLineDash([7, 6]);
+      ctx.beginPath(); ctx.ellipse(0, enemy.height * 0.38, enemy.width * 0.85, 16, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+
+    ctx.translate(0, -runBob + breath * 0.25);
+    ctx.scale(enemy.facing, 1);
+    ctx.save();
 
     switch (enemy.type) {
       case 'crimson_wisp': {
@@ -2570,6 +2687,54 @@ export class GameEngine2D {
       }
     }
 
+    if (enemy.type === 'ignis_knight' || enemy.type === 'dark_pyromancer') {
+      const stride = Math.sin(enemy.animTimer * 10) * (enemy.state === 'chase' ? 8 : 2);
+      ctx.save();
+      ctx.strokeStyle = enemy.type === 'ignis_knight' ? '#64748b' : '#581c87';
+      ctx.lineWidth = enemy.isBoss ? 8 : 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-9, 18); ctx.lineTo(-12 - stride, 35);
+      ctx.moveTo(9, 18); ctx.lineTo(12 + stride, 35);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.restore(); // restore the shared body transform before elite detailing
+
+    // High-contrast elite/boss silhouette details: crown horns, layered armor and pulsing core.
+    if (enemy.isBoss) {
+      const pulse = 0.85 + (Math.sin(enemy.animTimer * 4) + 1) * 0.12;
+      ctx.save();
+      ctx.scale(enemy.facing, 1);
+      ctx.strokeStyle = isFlashing ? '#ffffff' : '#fbbf24';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = '#f97316'; ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.moveTo(-enemy.width * 0.28, -enemy.height * 0.30);
+      ctx.lineTo(-enemy.width * 0.42, -enemy.height * 0.62);
+      ctx.lineTo(-enemy.width * 0.12, -enemy.height * 0.43);
+      ctx.lineTo(0, -enemy.height * (0.72 + pulse * 0.05));
+      ctx.lineTo(enemy.width * 0.12, -enemy.height * 0.43);
+      ctx.lineTo(enemy.width * 0.42, -enemy.height * 0.62);
+      ctx.lineTo(enemy.width * 0.28, -enemy.height * 0.30);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(251,191,36,0.72)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, -enemy.height * 0.05, enemy.width * 0.28 * pulse, enemy.height * 0.24 * pulse, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Animated ember motes orbit smaller enemies to give each silhouette more life.
+      for (let i = 0; i < 2; i++) {
+        const a = enemy.animTimer * (2.1 + i * 0.35) + enemy.id + i * Math.PI;
+        ctx.fillStyle = i ? 'rgba(251,191,36,0.8)' : 'rgba(56,189,248,0.78)';
+        ctx.shadowColor = ctx.fillStyle as string; ctx.shadowBlur = 9;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * enemy.width * 0.42, -enemy.height * 0.1 + Math.sin(a) * 12, 2.2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
     // Health Bar
     const hpPct = Math.max(0, enemy.hp / enemy.maxHp);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -2745,6 +2910,8 @@ export class GameEngine2D {
     this.soulMotes = [];
     this.meteors = [];
     this.recallBeacon = null;
+    this.slashCooldownTimer = 0;
+    this.orbitalWispCooldown = 0;
 
     this.setupWorldTokens();
 

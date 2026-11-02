@@ -9,6 +9,7 @@ import { GameEngine2D, DamageNumber, Enemy2D } from './game/GameEngine2D';
 import { TitleScreen } from './components/TitleScreen';
 import { HUD } from './components/HUD';
 import { TouchGestureControls } from './components/TouchGestureControls';
+import { TouchTutorialModal } from './components/TouchTutorialModal';
 import { PauseMenu } from './components/PauseMenu';
 import { StageSelectModal } from './components/StageSelectModal';
 import { UpgradeModal } from './components/UpgradeModal';
@@ -34,6 +35,7 @@ export default function App() {
   const [showUpgrades, setShowUpgrades] = useState(false);
   const [showStageSelect, setShowStageSelect] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Engine ref
   const engineRef = useRef<GameEngine2D | null>(null);
@@ -275,6 +277,19 @@ export default function App() {
   };
   const currentStageName = t[stageDef.nameKey as keyof typeof t] as string;
 
+  const beginGame = () => {
+    setGameState('playing');
+    engineRef.current?.restartStage();
+    try {
+      if (localStorage.getItem('ignis-azure-touch-tutorial-v2') !== 'seen') setShowTutorial(true);
+    } catch { setShowTutorial(true); }
+  };
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    try { localStorage.setItem('ignis-azure-touch-tutorial-v2', 'seen'); } catch { /* storage unavailable */ }
+  };
+
   return (
     <main
       className="relative w-screen h-screen overflow-hidden bg-gray-950 font-sans select-none touch-none"
@@ -289,10 +304,7 @@ export default function App() {
           lang={settings.language}
           stats={stats}
           currentStage={stageIndex + 1}
-          onStartGame={() => {
-            setGameState('playing');
-            engineRef.current?.restartStage();
-          }}
+          onStartGame={beginGame}
           onOpenStageSelect={() => setShowStageSelect(true)}
           onOpenUpgrades={() => setShowUpgrades(true)}
           onOpenSettings={() => setShowSettings(true)}
@@ -316,10 +328,12 @@ export default function App() {
             damageNumbers={damageNumbers}
             flightTime={cooldowns.flightTime}
             onPause={() => setGameState('paused')}
+            onHelp={() => setShowTutorial(true)}
           />
 
           {/* Invisible gesture controls: drag to move, tap to slash, flick to jump/dash. */}
-          <TouchGestureControls engine={engineRef.current} />
+          {!showTutorial && <TouchGestureControls engine={engineRef.current} />}
+          {showTutorial && <TouchTutorialModal lang={settings.language} onClose={closeTutorial} />}
         </>
       )}
 

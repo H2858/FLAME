@@ -1,0 +1,8 @@
+{
+  "name": "Ignis Azure - The Blue Flame",
+  "description": "Cinematic 3D dark forest action RPG featuring a mystical Blue Flame spirit battling shadow beasts with fluid combat, customizable mobile touch controls, skill progression, and Arabic/English bilingual support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

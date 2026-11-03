@@ -7,7 +7,7 @@ import React from 'react';
 import { Language, PlayerStats } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { DamageNumber, Enemy2D } from '../game/GameEngine2D';
-import { Flame, Sparkles, Pause, ShieldAlert, CircleHelp } from 'lucide-react';
+import { Flame, Sparkles, Pause, ShieldAlert, CircleHelp, Crosshair } from 'lucide-react';
 
 interface HUDProps {
   lang: Language;
@@ -22,6 +22,8 @@ interface HUDProps {
   flightTime?: number;
   onPause: () => void;
   onHelp: () => void;
+  onBeam: () => void;
+  beamCooldown: number;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -37,6 +39,8 @@ export const HUD: React.FC<HUDProps> = ({
   flightTime = 0,
   onPause,
   onHelp,
+  onBeam,
+  beamCooldown,
 }) => {
   const t = TRANSLATIONS[lang];
   const hpPercent = Math.max(0, Math.min(100, (stats.hp / stats.maxHp) * 100));
@@ -136,6 +140,17 @@ export const HUD: React.FC<HUDProps> = ({
             aria-label="Controls guide"
           >
             <CircleHelp className="w-5 h-5" />
+          </button>
+
+          {/* Visible destructive beam action */}
+          <button
+            onClick={onBeam}
+            disabled={beamCooldown > 0}
+            className="pointer-events-auto relative p-2.5 rounded-xl bg-emerald-950/90 border border-emerald-300/70 text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.35)] active:scale-90 disabled:opacity-60"
+            aria-label="Fire energy beam"
+          >
+            <Crosshair className="w-5 h-5" />
+            {beamCooldown > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-black px-1 text-[9px] font-bold text-emerald-200">{beamCooldown.toFixed(0)}</span>}
           </button>
 
           {/* Pause Button */}

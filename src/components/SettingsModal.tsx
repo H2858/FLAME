@@ -268,29 +268,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* 4. Controls Customizer Quick Button */}
-          <div className="bg-slate-950/70 border border-cyan-500/20 rounded-xl p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Smartphone className="w-5 h-5 text-cyan-400" />
-              <div>
-                <h3 className="font-bold text-sm text-slate-100">
-                  {t.customizerTitle}
-                </h3>
-                <p className="text-xs text-slate-400">{t.customizerDesc}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                onClose();
-                onOpenControlsCustomizer();
-              }}
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs shadow-md"
-            >
-              {t.customizeControls}
-            </button>
-          </div>
-
-          {/* 5. Cloud Save & Sync */}
+          {/* 4. Cloud Save & Sync */}
           <div className="bg-slate-950/70 border border-cyan-500/20 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-cyan-300 font-bold">

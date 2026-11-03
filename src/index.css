@@ -36,3 +36,25 @@ button, input { touch-action: manipulation; }
   .fixed.inset-0.z-50 h1 { font-size: clamp(1.1rem, 5vw, 1.6rem); }
   .fixed.inset-0.z-50 h2 { font-size: clamp(1rem, 4.4vw, 1.35rem); }
 }
+
+
+/* Landscape-first mobile presentation. The game fills the short edge and keeps HUD/control zones clear. */
+#root { width: 100vw; height: 100dvh; }
+@media (orientation: landscape) and (max-width: 950px) {
+  html, body, #root { width: 100vw; height: 100dvh; }
+}
+@media (orientation: portrait) and (max-width: 950px) {
+  #root {
+    position: fixed;
+    width: 100dvh;
+    height: 100vw;
+    top: 0; left: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+    overflow: hidden;
+  }
+}
+@media (max-width: 950px) {
+  .fixed.inset-0.z-50 { padding: 6px; }
+  .fixed.inset-0.z-50 > div { max-height: 94dvh; max-width: min(94vw, 720px); padding: 10px; }
+}

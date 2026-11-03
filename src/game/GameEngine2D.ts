@@ -156,19 +156,12 @@ export class GameEngine2D {
   // Pitch Black Solid Continuous Ground Level (Player NEVER falls)
   public groundY = 530;
 
-  // Procedural lunar route: rolling regolith ridges with occasional hidden sinkholes.
+  // Night-meadow route: rolling grassy ridges with a continuous safe floor.
   private terrainHeightAt(worldX: number): number {
     return this.groundY + Math.sin(worldX * 0.0031) * 23 + Math.sin(worldX * 0.0087 + 1.4) * 10 + Math.sin(worldX * 0.0011) * 13;
   }
 
-  private isSinkholeAt(worldX: number): boolean {
-    // Deterministic per-run gaps, kept clear of the starting sanctuary.
-    if (worldX < 520 || worldX > this.familyAltarX - 260) return false;
-    const segment = Math.floor(worldX / 610);
-    const center = segment * 610 + 350 + Math.sin(segment * 17.31) * 72;
-    const width = 54 + (segment % 3) * 13;
-    return Math.abs(worldX - center) < width;
-  }
+  private isSinkholeAt(_worldX: number): boolean { return false; }
 
 
   /** Four visual acts, each with its own atmosphere and silhouette language. */
@@ -303,25 +296,25 @@ export class GameEngine2D {
   // 20 Progressive Stages
   // 20-stage journey in four escalating acts. Every fifth stage is a named boss gate.
   public stages: StageDefinition[] = [
-    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 8, enemyTypes: ['crimson_wisp'], isBossStage: false, difficultyScale: 1.0 },
-    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 10, enemyTypes: ['crimson_wisp', 'pyro_wolf'], isBossStage: false, difficultyScale: 1.12 },
-    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 11, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], isBossStage: false, difficultyScale: 1.25 },
-    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 12, enemyTypes: ['crimson_wraith', 'magma_floater', 'pyro_wolf'], isBossStage: false, difficultyScale: 1.38 },
+    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 8, enemyTypes: ['crimson_wisp'], bossType: 'crimson_wisp', isBossStage: true, difficultyScale: 1.0 },
+    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 10, enemyTypes: ['crimson_wisp', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: true, difficultyScale: 1.12 },
+    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 11, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 1.25 },
+    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 12, enemyTypes: ['crimson_wraith', 'magma_floater', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: true, difficultyScale: 1.38 },
     { id: 5, nameKey: 'stage_5', descriptionKey: 'stage_5_desc', themeColor: '#ef4444', targetKills: 14, enemyTypes: ['pyro_wolf', 'crimson_wraith', 'ignis_knight'], bossType: 'ignis_knight', isBossStage: true, difficultyScale: 1.52 },
-    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 14, enemyTypes: ['magma_floater', 'magma_golem', 'crimson_wisp'], isBossStage: false, difficultyScale: 1.66 },
-    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 15, enemyTypes: ['pyro_serpent', 'magma_floater'], isBossStage: false, difficultyScale: 1.8 },
-    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 16, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'pyre_drake'], isBossStage: false, difficultyScale: 1.95 },
-    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 17, enemyTypes: ['ignis_knight', 'pyro_wolf', 'dark_pyromancer'], isBossStage: false, difficultyScale: 2.1 },
+    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 14, enemyTypes: ['magma_floater', 'magma_golem', 'crimson_wisp'], bossType: 'crimson_wisp', isBossStage: true, difficultyScale: 1.66 },
+    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 15, enemyTypes: ['pyro_serpent', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 1.8 },
+    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 16, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 1.95 },
+    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 17, enemyTypes: ['ignis_knight', 'pyro_wolf', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 2.1 },
     { id: 10, nameKey: 'stage_10', descriptionKey: 'stage_10_desc', themeColor: '#dc2626', targetKills: 18, enemyTypes: ['ignis_knight', 'magma_golem', 'pyre_drake'], bossType: 'magma_golem', isBossStage: true, difficultyScale: 2.28 },
-    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 18, enemyTypes: ['pyre_drake', 'crimson_wisp', 'pyro_serpent'], isBossStage: false, difficultyScale: 2.42 },
-    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 19, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], isBossStage: false, difficultyScale: 2.58 },
-    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 20, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], isBossStage: false, difficultyScale: 2.74 },
-    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 21, enemyTypes: ['dark_pyromancer', 'ignis_knight', 'pyre_drake'], isBossStage: false, difficultyScale: 2.9 },
+    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 18, enemyTypes: ['pyre_drake', 'crimson_wisp', 'pyro_serpent'], bossType: 'pyro_serpent', isBossStage: true, difficultyScale: 2.42 },
+    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 19, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], bossType: 'crimson_wraith', isBossStage: true, difficultyScale: 2.58 },
+    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 20, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 2.74 },
+    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 21, enemyTypes: ['dark_pyromancer', 'ignis_knight', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 2.9 },
     { id: 15, nameKey: 'stage_15', descriptionKey: 'stage_15_desc', themeColor: '#b91c1c', targetKills: 22, enemyTypes: ['pyro_serpent', 'dark_pyromancer', 'magma_golem'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.08 },
-    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 22, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.24 },
-    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 23, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], isBossStage: false, difficultyScale: 3.42 },
-    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 24, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], isBossStage: false, difficultyScale: 3.62 },
-    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 25, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], isBossStage: false, difficultyScale: 3.84 },
+    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 22, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.24 },
+    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 23, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.42 },
+    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 24, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 3.62 },
+    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 25, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 3.84 },
     { id: 20, nameKey: 'stage_20', descriptionKey: 'stage_20_desc', themeColor: '#7f1d1d', targetKills: 26, enemyTypes: ['ignis_knight', 'dark_pyromancer', 'pyre_drake'], bossType: 'abyssal_sovereign', isBossStage: true, difficultyScale: 4.1 },
   ];
 
@@ -895,15 +888,16 @@ export class GameEngine2D {
     if (this.isBattleCleared || this.isReunited) return;
 
     const stage = this.stages[this.currentStageIndex];
-    if (this.enemiesKilledInStage >= stage.targetKills) return;
-
-    this.spawnTimer -= dt;
     const aliveEnemies = this.enemies.filter((e) => e.state !== 'dead');
 
-    if (stage.isBossStage && this.enemiesKilledInStage >= Math.floor(stage.targetKills * 0.45) && !this.isBossSpawned) {
+    // Clear the regular enemy wave first; the stage's signature boss is the final encounter.
+    if (stage.isBossStage && this.enemiesKilledInStage >= stage.targetKills - 1 && !this.isBossSpawned && aliveEnemies.length === 0) {
       this.spawnBoss(stage.bossType || 'pyro_wolf');
       return;
     }
+    if (this.enemiesKilledInStage >= stage.targetKills) return;
+
+    this.spawnTimer -= dt;
 
     const maxAlive = stage.isBossStage ? 6 : 7;
     if (this.spawnTimer <= 0 && aliveEnemies.length < maxAlive) {
@@ -1179,121 +1173,14 @@ export class GameEngine2D {
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
-      // Uneven lunar ground. Sinkholes intentionally remove the floor and allow a fall.
+      // Continuous rolling ground: no pits or water hazards.
       this.isGrounded = false;
       const floorY = this.terrainHeightAt(this.x);
-      if (!this.isSinkholeAt(this.x) && this.y + this.height / 2 >= floorY) {
+      if (this.y + this.height / 2 >= floorY) {
         this.y = floorY - this.height / 2;
         this.vy = 0;
         this.isGrounded = true;
-      } else if (this.isSinkholeAt(this.x) && this.y > floorY + 145) {
-        // Splash-out death: blue droplets and a brief impact shake before game over.
-        for (let i = 0; i < 34; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const speed = 70 + Math.random() * 250;
-          this.particles.push({ x: this.x, y: floorY + 8, vx: Math.cos(a) * speed, vy: -Math.abs(Math.sin(a) * speed) - 40, size: 3 + Math.random() * 7, color: Math.random() < 0.5 ? '#38bdf8' : '#bae6fd', alpha: 1, life: 0.8, maxLife: 0.8, shape: 'spark' });
-        }
-        this.addScreenShake(18);
-        this.stats.hp = this.stats.maxHp;
-        this.damagePlayer(this.stats.maxHp + 999);
       }
-
-      // Elevated Monolith Platforms (Clean One-Way Landing)
-      if (!this.isHorizontalFlightActive) {
-        for (const plat of this.platforms) {
-          if (
-            this.x + this.width / 4 > plat.x &&
-            this.x - this.width / 4 < plat.x + plat.width &&
-            this.y + this.height / 2 >= plat.y &&
-            this.y + this.height / 2 <= plat.y + 14 &&
-            this.vy >= 0
-          ) {
-            this.y = plat.y - this.height / 2;
-            this.vy = 0;
-            this.isGrounded = true;
-          }
-        }
-      }
-    }
-
-    // Trailing burning blue embers from hero
-    const emberCount = Math.abs(this.vx) > 40 || this.isHorizontalFlightActive ? 3 : 1;
-    for (let i = 0; i < emberCount; i++) {
-      this.particles.push({
-        x: this.x + (Math.random() - 0.5) * 18,
-        y: this.y + (Math.random() - 0.5) * 20,
-        vx: -this.vx * 0.15 + (Math.random() - 0.5) * 45,
-        vy: -75 - Math.random() * 95,
-        size: 3 + Math.random() * 5,
-        color: Math.random() < 0.6 ? '#00f0ff' : '#38bdf8',
-        alpha: 0.9,
-        life: 0.35,
-        maxLife: 0.35,
-      });
-    }
-
-    // 4. Cooldowns & Timers
-    if (this.dashCooldown > 0) this.dashCooldown = Math.max(0, this.dashCooldown - dt);
-    if (this.recallCooldown > 0) this.recallCooldown = Math.max(0, this.recallCooldown - dt);
-    if (this.beamCooldown > 0) this.beamCooldown = Math.max(0, this.beamCooldown - dt);
-    if (this.parryCooldown > 0) this.parryCooldown = Math.max(0, this.parryCooldown - dt);
-    if (this.novaCooldown > 0) this.novaCooldown = Math.max(0, this.novaCooldown - dt);
-
-    if (this.isDashing) {
-      this.dashTimer -= dt;
-      if (this.dashTimer <= 0) this.isDashing = false;
-    }
-
-    if (this.isBeaming) {
-      this.beamTimer -= dt;
-      if (this.beamTimer <= 0) this.isBeaming = false;
-    }
-
-    if (this.isParrying) {
-      this.parryTimer -= dt;
-      if (this.parryTimer <= 0) this.isParrying = false;
-    }
-
-    this.slashCooldownTimer = Math.max(0, this.slashCooldownTimer - dt);
-    this.orbitalWispCooldown = Math.max(0, this.orbitalWispCooldown - dt);
-
-    if (this.isSlashing) {
-      this.slashTimer -= dt;
-      if (this.slashTimer <= 0) this.isSlashing = false;
-    }
-
-    if (this.comboResetTimer > 0) {
-      this.comboResetTimer -= dt;
-      if (this.comboResetTimer <= 0) {
-        this.slashStep = 0;
-        this.comboStreak = 0;
-      }
-    }
-
-    if (this.recallBeacon && this.recallBeacon.active) {
-      this.recallBeacon.life -= dt;
-      if (this.recallBeacon.life <= 0) {
-        this.recallBeacon.active = false;
-      }
-    }
-
-    if (this.onCooldownsUpdate) {
-      this.onCooldownsUpdate({
-        dash: this.dashCooldown,
-        beam: this.beamCooldown,
-        ward: this.parryCooldown,
-        nova: this.novaCooldown,
-        recall: this.recallCooldown,
-        recallActive: !!(this.recallBeacon && this.recallBeacon.active),
-        novaEnergy: this.novaEnergy,
-        comboStreak: this.comboStreak,
-        flightTime: Math.max(0, this.flightDuration),
-      });
-    }
-
-    // 5. Update Enemies
-    for (const enemy of this.enemies) {
-      if (enemy.state === 'dead') continue;
 
       enemy.animTimer += dt;
       if (enemy.flashTimer > 0) enemy.flashTimer -= dt;
@@ -1305,7 +1192,7 @@ export class GameEngine2D {
       enemy.vy += 1400 * dt;
       enemy.y += enemy.vy * dt;
       const enemyFloor = this.terrainHeightAt(enemy.x);
-      if (!this.isSinkholeAt(enemy.x) && enemy.y + enemy.height / 2 >= enemyFloor) {
+      if (enemy.y + enemy.height / 2 >= enemyFloor) {
         enemy.y = enemyFloor - enemy.height / 2;
         enemy.vy = 0;
       }
@@ -1783,65 +1670,50 @@ export class GameEngine2D {
     // 4. LOW MISTY PREDATOR EYES (Lowered near ground, NOT in the sky!)
     this.renderLowMistyEyes(ctx);
 
-    // 5. PITCH BLACK SOLID GROUND (الأرضية سوداء عاتمة)
+    // 5. NIGHT MEADOW: deep green-black grassland with readable rolling contours.
     const groundLeft = this.cameraX - 600;
     const groundRight = this.cameraX + width / this.cameraZoom + 600;
     const groundWidth = groundRight - groundLeft;
-
-    // Sculpted lunar regolith: rolling ridges, layered grey strata and sudden water-filled fissures.
     ctx.beginPath();
-    let drawingFloor = false;
-    for (let wx = groundLeft; wx <= groundRight; wx += 12) {
-      if (this.isSinkholeAt(wx)) { drawingFloor = false; continue; }
+    for (let wx = groundLeft; wx <= groundRight; wx += 10) {
       const gy = this.terrainHeightAt(wx);
-      if (!drawingFloor) { ctx.moveTo(wx, gy); drawingFloor = true; }
-      else ctx.lineTo(wx, gy);
+      if (wx === groundLeft) ctx.moveTo(wx, gy); else ctx.lineTo(wx, gy);
     }
     ctx.lineTo(groundRight, height + this.cameraY + 1000);
     ctx.lineTo(groundLeft, height + this.cameraY + 1000);
     ctx.closePath();
-    const regolith = ctx.createLinearGradient(0, this.groundY - 55, 0, this.groundY + 380);
-    regolith.addColorStop(0, '#777d86');
-    regolith.addColorStop(0.12, '#454b55');
-    regolith.addColorStop(0.42, '#242a34');
-    regolith.addColorStop(1, '#080b12');
-    ctx.fillStyle = regolith;
-    ctx.fill();
+    const meadow = ctx.createLinearGradient(0, this.groundY - 65, 0, this.groundY + 420);
+    meadow.addColorStop(0, '#263d2c');
+    meadow.addColorStop(0.10, '#172b20');
+    meadow.addColorStop(0.38, '#0c1b14');
+    meadow.addColorStop(1, '#030906');
+    ctx.fillStyle = meadow; ctx.fill();
 
-    // Crater ridges and rock seams follow the terrain contour.
-    ctx.strokeStyle = 'rgba(190,199,210,0.52)';
-    ctx.lineWidth = 3;
+    // Soft moonlit grassy ridge and fine blades along the silhouette.
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(111,157,105,0.58)'; ctx.lineWidth = 3;
     ctx.beginPath();
-    for (let wx = groundLeft; wx <= groundRight; wx += 10) {
-      if (this.isSinkholeAt(wx)) continue;
+    for (let wx = groundLeft; wx <= groundRight; wx += 8) {
       const gy = this.terrainHeightAt(wx);
-      if (wx === groundLeft || this.isSinkholeAt(wx - 10)) ctx.moveTo(wx, gy);
-      else ctx.lineTo(wx, gy);
+      if (wx === groundLeft) ctx.moveTo(wx, gy); else ctx.lineTo(wx, gy);
     }
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(8,12,20,0.75)';
-    ctx.lineWidth = 1;
-    for (let rock = 0; rock < 34; rock++) {
-      const wx = groundLeft + ((rock * 173 + 47) % Math.max(1, groundWidth));
-      if (this.isSinkholeAt(wx)) continue;
+    for (let i = 0; i < Math.ceil(groundWidth / 13); i++) {
+      const wx = groundLeft + i * 13;
       const gy = this.terrainHeightAt(wx);
-      ctx.beginPath(); ctx.moveTo(wx, gy + 18 + (rock % 5) * 5); ctx.lineTo(wx + 24 + (rock % 4) * 9, gy + 22 + (rock % 5) * 5); ctx.stroke();
+      const h = 3 + ((i * 17) % 8);
+      ctx.strokeStyle = i % 3 === 0 ? 'rgba(116,170,105,0.62)' : 'rgba(57,105,65,0.55)';
+      ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(wx, gy + 1); ctx.lineTo(wx + ((i % 2) ? 2 : -2), gy - h); ctx.stroke();
     }
-
-    // Deep sinkholes reveal a cold underground pool; their edges are jagged and readable.
-    for (let wx = groundLeft; wx <= groundRight; wx += 8) {
-      if (!this.isSinkholeAt(wx) || this.isSinkholeAt(wx - 8)) continue;
-      const center = wx;
-      const left = center - 75;
-      const right = center + 75;
-      const top = this.terrainHeightAt(center) - 2;
-      ctx.fillStyle = '#070d18'; ctx.fillRect(left, top, right - left, 250);
-      const water = ctx.createLinearGradient(0, top + 35, 0, top + 230);
-      water.addColorStop(0, 'rgba(14,116,144,0.9)'); water.addColorStop(1, 'rgba(2,6,23,0.98)');
-      ctx.fillStyle = water; ctx.fillRect(left + 5, top + 48, right - left - 10, 180);
-      ctx.strokeStyle = 'rgba(103,232,249,0.8)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left + 18, top + 9); ctx.lineTo(left + 35, top - 3); ctx.moveTo(right - 35, top - 2); ctx.lineTo(right - 18, top + 8); ctx.lineTo(right, top); ctx.stroke();
+    // Sparse dew glints, subdued so the playfield stays clear.
+    for (let i = 0; i < 24; i++) {
+      const wx = groundLeft + ((i * 137 + 31) % Math.max(1, groundWidth));
+      const gy = this.terrainHeightAt(wx) + 8 + (i % 5) * 11;
+      ctx.fillStyle = `rgba(139,190,126,${0.12 + (i % 3) * 0.05})`;
+      ctx.beginPath(); ctx.arc(wx, gy, 1 + (i % 2), 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
 
     // Weather: drifting cloud bands and fine rain, transitioning from moonlit blue to dawn gold.
     const weatherPhase = (this.currentStageIndex % 5) / 4;
@@ -3001,31 +2873,36 @@ export class GameEngine2D {
   // CELESTIAL BEAM RENDERING
   // ==========================================
   private renderCelestialBeam(ctx: CanvasRenderingContext2D) {
-    const beamLength = 700;
-    const startX = this.x + this.facing * 20;
-    const startY = this.y - 4;
+    const beamLength = 760;
+    const startX = this.x + this.facing * 26;
+    const startY = this.y - 10;
     const endX = startX + this.facing * beamLength;
-
+    const pulse = 0.82 + Math.sin(this.flameTimer * 42) * 0.18;
     ctx.save();
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
-    ctx.lineWidth = 36;
-    ctx.shadowColor = '#00f0ff';
-    ctx.shadowBlur = 30;
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(endX, startY);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 14;
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(endX, startY);
-    ctx.stroke();
-
-    ctx.restore();
+    ctx.lineCap = 'round';
+    // Expanding muzzle bloom.
+    const bloom = ctx.createRadialGradient(startX, startY, 2, startX, startY, 54);
+    bloom.addColorStop(0, 'rgba(255,255,255,0.95)');
+    bloom.addColorStop(0.22, 'rgba(111,255,220,0.72)');
+    bloom.addColorStop(1, 'rgba(16,185,129,0)');
+    ctx.fillStyle = bloom; ctx.beginPath(); ctx.arc(startX, startY, 54, 0, Math.PI * 2); ctx.fill();
+    // Broad emerald energy sheath.
+    ctx.globalAlpha = pulse; ctx.strokeStyle = 'rgba(52,211,153,0.28)'; ctx.lineWidth = 48; ctx.shadowColor = '#34d399'; ctx.shadowBlur = 34;
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, startY); ctx.stroke();
+    // Tight luminous core with a white-hot center.
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 17; ctx.shadowColor = '#6ee7b7'; ctx.shadowBlur = 24;
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, startY); ctx.stroke();
+    ctx.strokeStyle = '#f0fdf4'; ctx.lineWidth = 5; ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, startY); ctx.stroke();
+    // Traveling energy rings and sharp particles sell forward velocity.
+    for (let i = 0; i < 8; i++) {
+      const t = ((this.flameTimer * 3.8 + i / 8) % 1);
+      const x = startX + this.facing * (t * beamLength);
+      const r = 8 + (1 - t) * 13;
+      ctx.globalAlpha = (1 - t) * 0.8; ctx.strokeStyle = '#a7f3d0'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.ellipse(x, startY, r, r * 1.8, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
   }
 
   // ==========================================

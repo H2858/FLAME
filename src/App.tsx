@@ -37,6 +37,20 @@ export default function App() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
+  // Prefer true landscape on phones; CSS fallback below handles browsers that reject orientation lock.
+  useEffect(() => {
+    const requestLandscape = async () => {
+      try {
+        const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> };
+        if (orientation?.lock) await orientation.lock('landscape');
+      } catch { /* Browser may require installed PWA/fullscreen; CSS fallback remains active. */ }
+    };
+    requestLandscape();
+    const onFullscreen = () => { if (document.fullscreenElement) requestLandscape(); };
+    document.addEventListener('fullscreenchange', onFullscreen);
+    return () => document.removeEventListener('fullscreenchange', onFullscreen);
+  }, []);
+
   // Engine ref
   const engineRef = useRef<GameEngine2D | null>(null);
 
@@ -329,6 +343,8 @@ export default function App() {
             flightTime={cooldowns.flightTime}
             onPause={() => setGameState('paused')}
             onHelp={() => setShowTutorial(true)}
+            onBeam={() => engineRef.current?.performCelestialBeam()}
+            beamCooldown={cooldowns.beam}
           />
 
           {/* Invisible gesture controls: drag to move, tap to slash, flick to jump/dash. */}

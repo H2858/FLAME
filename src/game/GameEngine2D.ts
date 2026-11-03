@@ -209,6 +209,9 @@ export class GameEngine2D {
   public isBeaming = false;
   public beamTimer = 0;
   public beamCooldown = 0;
+  // Player-triggered Azure Flame empowerment (five-second active window).
+  public azureFlameTimer = 0;
+  public azureFlameCooldown = 0;
 
   // Parry Ward
   public isParrying = false;
@@ -269,6 +272,8 @@ export class GameEngine2D {
     comboStreak: number;
     flightTime: number;
     stamina: number;
+    flameTime: number;
+    wardTime: number;
   }) => void;
   public onDamageNumber?: (dmg: DamageNumber) => void;
   public onStageProgress?: (killed: number, target: number, wave: number) => void;
@@ -512,7 +517,7 @@ export class GameEngine2D {
     this.slashStep = (this.slashStep + 1) % 3;
 
     const isHeavy = step === 2;
-    const baseDmg = this.stats.attackPower * (1 + (this.skills.flameSlash - 1) * 0.22);
+    const baseDmg = this.stats.attackPower * (1 + (this.skills.flameSlash - 1) * 0.22) * (this.azureFlameTimer > 0 ? 1.55 : 1);
     const comboMult = step === 0 ? 1.0 : step === 1 ? 1.4 : 2.4;
 
     soundManager.playSlash(step);
@@ -704,13 +709,24 @@ export class GameEngine2D {
     }
   }
 
+  public activateAzureFlame() {
+    if (this.azureFlameCooldown > 0 || this.azureFlameTimer > 0 || this.stats.hp <= 0 || this.isReunited) return;
+    this.azureFlameTimer = 5;
+    this.azureFlameCooldown = 7;
+    soundManager.playCelestialBeam();
+    // A short, clean ignition burst; the aura itself is rendered around the hero.
+    for (let i = 0; i < 18; i++) {
+      const a = (Math.PI * 2 * i) / 18;
+      this.particles.push({ x: this.x, y: this.y, vx: Math.cos(a) * (65 + Math.random() * 55), vy: Math.sin(a) * (65 + Math.random() * 55), size: 3 + Math.random() * 4, color: i % 3 ? '#22d3ee' : '#ffffff', alpha: 0.9, life: 0.42, maxLife: 0.42 });
+    }
+  }
+
   public performParryWard() {
     if (this.parryCooldown > 0 || this.isParrying || this.stats.hp <= 0 || this.isReunited || this.stamina < 25) return;
-
     this.stamina = Math.max(0, this.stamina - 25);
     this.isParrying = true;
-    this.parryTimer = 0.75 + (this.skills.parryWard - 1) * 0.15;
-    this.parryCooldown = 4.5;
+    this.parryTimer = 5;
+    this.parryCooldown = 6;
     soundManager.playBlast();
   }
 
@@ -1296,6 +1312,8 @@ export class GameEngine2D {
     if (this.dashCooldown > 0) this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     if (this.recallCooldown > 0) this.recallCooldown = Math.max(0, this.recallCooldown - dt);
     if (this.beamCooldown > 0) this.beamCooldown = Math.max(0, this.beamCooldown - dt);
+    if (this.azureFlameCooldown > 0) this.azureFlameCooldown = Math.max(0, this.azureFlameCooldown - dt);
+    if (this.azureFlameTimer > 0) this.azureFlameTimer = Math.max(0, this.azureFlameTimer - dt);
     if (this.parryCooldown > 0) this.parryCooldown = Math.max(0, this.parryCooldown - dt);
     if (this.novaCooldown > 0) this.novaCooldown = Math.max(0, this.novaCooldown - dt);
 
@@ -1349,6 +1367,8 @@ export class GameEngine2D {
         comboStreak: this.comboStreak,
         flightTime: Math.max(0, this.flightDuration),
         stamina: this.stamina,
+        flameTime: this.azureFlameTimer,
+        wardTime: this.isParrying ? Math.max(0, this.parryTimer) : 0,
       });
     }
 
@@ -1806,42 +1826,52 @@ export class GameEngine2D {
     // Ravens are rendered in screen space so they visibly cross in front of the moon.
     this.renderCrows(ctx);
 
-    // 3. Layered alpine mountain range with irregular ridgelines, rock facets and occasional snow caps.
+    // 3. Natural alpine range: broad shoulders, broken ridges, glacial shelves and varied snow lines.
     ctx.save();
     const ridgeOffset = this.cameraX * 0.055;
     for (let i = -2; i < 8; i++) {
       const mx = i * 760 - (ridgeOffset % 760);
       const baseY = height * 0.805;
-      const peakX = mx + 260 + (i % 3) * 85;
-      const peakY = height * (0.36 + (i % 4) * 0.035);
-      const leftShoulder = mx + 105;
-      const rightShoulder = mx + 505;
-      const ridge = [
-        [mx - 80, baseY], [leftShoulder, baseY - 55], [mx + 175, peakY + 115],
-        [peakX - 72, peakY + 48], [peakX, peakY], [peakX + 54, peakY + 72],
-        [mx + 420, baseY - 82], [rightShoulder, baseY],
-      ];
-      ctx.beginPath(); ctx.moveTo(ridge[0][0], ridge[0][1]);
-      for (let r = 1; r < ridge.length; r++) ctx.lineTo(ridge[r][0], ridge[r][1]);
+      const peakX = mx + 260 + ((i * 37 % 5) * 27);
+      const peakY = height * (0.35 + ((i * 11 % 4) * 0.035));
+      const leftFoot = mx - 80;
+      const rightFoot = mx + 650;
+      const shoulderA = mx + 95 + (i % 3) * 18;
+      const shoulderB = mx + 455 + (i % 4) * 13;
+      const notchX = peakX + 92;
+      ctx.beginPath();
+      ctx.moveTo(leftFoot, baseY);
+      ctx.bezierCurveTo(mx + 15, baseY - 35, shoulderA - 25, peakY + 155, shoulderA + 42, peakY + 118);
+      ctx.bezierCurveTo(mx + 185, peakY + 95, peakX - 115, peakY + 62, peakX - 42, peakY + 18);
+      ctx.quadraticCurveTo(peakX - 12, peakY - 2, peakX + 8, peakY + 3);
+      ctx.bezierCurveTo(peakX + 68, peakY + 45, notchX - 12, peakY + 92, notchX + 40, peakY + 104);
+      ctx.bezierCurveTo(mx + 425, peakY + 138, shoulderB - 10, baseY - 45, rightFoot, baseY);
       ctx.closePath();
-      const rock = ctx.createLinearGradient(mx, peakY, mx + 520, baseY);
-      rock.addColorStop(0, i % 2 ? '#17253b' : '#1b2b43');
-      rock.addColorStop(0.55, palette.ridge);
+      const rock = ctx.createLinearGradient(mx, peakY, mx + 600, baseY);
+      rock.addColorStop(0, i % 2 ? '#24364d' : '#1b3049');
+      rock.addColorStop(0.42, palette.ridge);
       rock.addColorStop(1, '#080f20');
       ctx.fillStyle = rock; ctx.fill();
-      // Lit rock face planes create natural slopes rather than flat triangles.
-      ctx.fillStyle = 'rgba(115,151,177,0.10)';
-      ctx.beginPath(); ctx.moveTo(peakX, peakY); ctx.lineTo(peakX - 72, peakY + 48); ctx.lineTo(mx + 175, baseY - 55); ctx.lineTo(peakX - 18, peakY + 92); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(2,8,23,0.24)';
-      ctx.beginPath(); ctx.moveTo(peakX, peakY); ctx.lineTo(peakX + 54, peakY + 72); ctx.lineTo(mx + 420, baseY - 82); ctx.closePath(); ctx.fill();
-      // Snow is reserved for the colder acts and only sits on the summit ridge.
+
+      // Layered rock faces follow the mountain slope instead of forming triangular wedges.
+      ctx.fillStyle = 'rgba(150,180,202,0.10)';
+      ctx.beginPath(); ctx.moveTo(peakX - 35, peakY + 20); ctx.bezierCurveTo(peakX - 105, peakY + 75, mx + 155, baseY - 72, mx + 45, baseY - 18); ctx.lineTo(peakX - 8, peakY + 118); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(2,8,23,0.28)';
+      ctx.beginPath(); ctx.moveTo(peakX + 10, peakY + 5); ctx.bezierCurveTo(peakX + 105, peakY + 85, mx + 490, baseY - 85, rightFoot - 45, baseY - 10); ctx.lineTo(peakX + 82, peakY + 145); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(180,205,220,0.10)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(peakX - 5, peakY + 48); ctx.quadraticCurveTo(peakX - 72, peakY + 115, mx + 225, baseY - 92); ctx.stroke();
+      // Snow only on selected high ridges, with irregular drifts and exposed rock cuts.
       if (i % 3 === 0 || this.currentStageIndex >= 10) {
-        ctx.fillStyle = 'rgba(218,235,246,0.82)';
-        ctx.beginPath(); ctx.moveTo(peakX, peakY + 2); ctx.lineTo(peakX - 25, peakY + 29); ctx.lineTo(peakX - 12, peakY + 25); ctx.lineTo(peakX + 2, peakY + 39); ctx.lineTo(peakX + 15, peakY + 23); ctx.lineTo(peakX + 28, peakY + 31); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.42)'; ctx.beginPath(); ctx.moveTo(peakX, peakY + 2); ctx.lineTo(peakX - 12, peakY + 25); ctx.lineTo(peakX + 2, peakY + 18); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(225,240,249,0.88)';
+        ctx.beginPath(); ctx.moveTo(peakX - 38, peakY + 24); ctx.quadraticCurveTo(peakX - 12, peakY - 1, peakX + 10, peakY + 5); ctx.lineTo(peakX + 34, peakY + 31); ctx.lineTo(peakX + 18, peakY + 26); ctx.lineTo(peakX + 4, peakY + 38); ctx.lineTo(peakX - 12, peakY + 27); ctx.lineTo(peakX - 25, peakY + 35); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(peakX - 30, peakY + 20); ctx.quadraticCurveTo(peakX - 9, peakY + 1, peakX + 7, peakY + 8); ctx.lineTo(peakX - 7, peakY + 20); ctx.closePath(); ctx.fill();
       }
     }
     ctx.restore();
+
+    // Rare distant castles and airborne fire drakes are decorative, never collision objects.
+    this.renderDistantCastle(ctx, width, height, palette.accent);
+    this.renderSkyDragons(ctx, width, height);
 
     // Distant act landmarks: broken citadels, spires and floating basalt shelves.
     // The parallax offset is deliberately tiny to create depth without distracting from combat.
@@ -1891,17 +1921,19 @@ export class GameEngine2D {
     ctx.lineTo(groundRight, height + this.cameraY + 1000);
     ctx.lineTo(groundLeft, height + this.cameraY + 1000);
     ctx.closePath();
+    const isRoseMeadow = this.currentStageIndex === 11;
     const meadow = ctx.createLinearGradient(0, this.groundY - 65, 0, this.groundY + 420);
-    meadow.addColorStop(0, '#263d2c');
-    meadow.addColorStop(0.10, '#172b20');
-    meadow.addColorStop(0.38, '#0c1b14');
-    meadow.addColorStop(1, '#030906');
+    if (isRoseMeadow) {
+      meadow.addColorStop(0, '#8f527e'); meadow.addColorStop(0.10, '#60334f'); meadow.addColorStop(0.38, '#321c32'); meadow.addColorStop(1, '#100b18');
+    } else {
+      meadow.addColorStop(0, '#263d2c'); meadow.addColorStop(0.10, '#172b20'); meadow.addColorStop(0.38, '#0c1b14'); meadow.addColorStop(1, '#030906');
+    }
     ctx.fillStyle = meadow; ctx.fill();
 
     // Soft moonlit grassy ridge and fine blades along the silhouette.
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(111,157,105,0.58)'; ctx.lineWidth = 3;
+    ctx.strokeStyle = isRoseMeadow ? 'rgba(255,190,230,0.72)' : 'rgba(111,157,105,0.58)'; ctx.lineWidth = 3;
     ctx.beginPath();
     for (let wx = groundLeft; wx <= groundRight; wx += 8) {
       const gy = this.terrainHeightAt(wx);
@@ -1912,14 +1944,14 @@ export class GameEngine2D {
       const wx = groundLeft + i * 13;
       const gy = this.terrainHeightAt(wx);
       const h = 3 + ((i * 17) % 8);
-      ctx.strokeStyle = i % 3 === 0 ? 'rgba(116,170,105,0.62)' : 'rgba(57,105,65,0.55)';
+      ctx.strokeStyle = isRoseMeadow ? (i % 3 === 0 ? 'rgba(255,205,235,0.78)' : 'rgba(198,112,174,0.72)') : (i % 3 === 0 ? 'rgba(116,170,105,0.62)' : 'rgba(57,105,65,0.55)');
       ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(wx, gy + 1); ctx.lineTo(wx + ((i % 2) ? 2 : -2), gy - h); ctx.stroke();
     }
     // Sparse dew glints, subdued so the playfield stays clear.
     for (let i = 0; i < 24; i++) {
       const wx = groundLeft + ((i * 137 + 31) % Math.max(1, groundWidth));
       const gy = this.terrainHeightAt(wx) + 8 + (i % 5) * 11;
-      ctx.fillStyle = `rgba(139,190,126,${0.12 + (i % 3) * 0.05})`;
+      ctx.fillStyle = isRoseMeadow ? `rgba(255,190,226,${0.15 + (i % 3) * 0.05})` : `rgba(139,190,126,${0.12 + (i % 3) * 0.05})`;
       ctx.beginPath(); ctx.arc(wx, gy, 1 + (i % 2), 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
@@ -2085,6 +2117,64 @@ export class GameEngine2D {
   }
 
   /** Elegant near-black raven silhouettes with articulated, flapping wings. */
+  /** A rare, layered fortress with warm windows and tiny moving silhouettes. */
+  private renderDistantCastle(ctx: CanvasRenderingContext2D, width: number, height: number, paletteAccent: string) {
+    if (![2, 7, 15].includes(this.currentStageIndex)) return;
+    const x = width * 0.72 - this.cameraX * 0.035;
+    const y = height * 0.60;
+    const scale = Math.max(0.62, Math.min(1.05, width / 900));
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = '#10182b';
+    // Main keep and stepped curtain walls.
+    ctx.beginPath(); ctx.moveTo(-175, 78); ctx.lineTo(-160, -15); ctx.lineTo(-112, -15); ctx.lineTo(-104, -76); ctx.lineTo(-63, -76); ctx.lineTo(-55, -18); ctx.lineTo(56, -18); ctx.lineTo(65, -90); ctx.lineTo(110, -90); ctx.lineTo(119, -18); ctx.lineTo(163, -18); ctx.lineTo(176, 78); ctx.closePath(); ctx.fill();
+    ctx.fillRect(-205, 38, 410, 42);
+    // crenellations
+    for (let i = -5; i <= 5; i++) ctx.fillRect(i * 34 - 9, 28, 18, 17);
+    // Warm windows with animated silhouettes crossing behind the glass.
+    for (let row = 0; row < 2; row++) for (let col = 0; col < 7; col++) {
+      const wx = -145 + col * 47; const wy = row === 0 ? -2 : 43;
+      ctx.fillStyle = (col + row) % 3 === 0 ? 'rgba(255,190,112,0.95)' : 'rgba(255,211,145,0.72)';
+      ctx.shadowColor = '#ffb45f'; ctx.shadowBlur = 12;
+      ctx.fillRect(wx, wy, 10, 21); ctx.shadowBlur = 0;
+      const walk = Math.sin(this.flameTimer * 2.4 + col * 1.7 + row) * 3;
+      ctx.fillStyle = 'rgba(25,18,27,0.82)';
+      ctx.beginPath(); ctx.arc(wx + 5 + walk, wy + 8, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(wx + 3 + walk, wy + 10, 4, 8);
+    }
+    ctx.strokeStyle = paletteAccent; ctx.globalAlpha = 0.24; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-210, 79); ctx.lineTo(210, 79); ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Elegant distant dragons glide across selected skies and breathe a short fading flame plume. */
+  private renderSkyDragons(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    if (![5, 11, 16].includes(this.currentStageIndex)) return;
+    const cycle = width + 420;
+    const travel = (this.flameTimer * 34 + this.currentStageIndex * 173) % cycle;
+    const x = -210 + travel;
+    const y = height * (0.31 + Math.sin(this.flameTimer * 0.7) * 0.035);
+    const flap = Math.sin(this.flameTimer * 5.2) * 0.42;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1.18, 1.18);
+    ctx.globalAlpha = 0.82;
+    // Rear wing with articulated membrane.
+    ctx.fillStyle = '#111a2b'; ctx.strokeStyle = 'rgba(91,128,155,0.42)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(-8, -3); ctx.quadraticCurveTo(-35, -48 - flap * 22, -76, -67 - flap * 30); ctx.quadraticCurveTo(-58, -26, -36, 2); ctx.lineTo(-8, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8, -2); ctx.quadraticCurveTo(36, -43 + flap * 22, 75, -59 + flap * 28); ctx.quadraticCurveTo(57, -17, 35, 7); ctx.lineTo(8, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Long scaled body, neck, horned head and tail.
+    ctx.fillStyle = '#0b1424';
+    ctx.beginPath(); ctx.moveTo(-48, 0); ctx.quadraticCurveTo(-18, -15, 16, -5); ctx.quadraticCurveTo(35, -3, 49, -17); ctx.lineTo(68, -19); ctx.lineTo(55, -5); ctx.quadraticCurveTo(29, 17, -8, 12); ctx.quadraticCurveTo(-37, 19, -48, 0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-43, 3); ctx.quadraticCurveTo(-76, 9, -91, 28); ctx.quadraticCurveTo(-65, 17, -48, 12); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(39, -10); ctx.lineTo(63, -24); ctx.lineTo(59, -9); ctx.lineTo(74, -12); ctx.lineTo(66, 1); ctx.lineTo(44, 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(251,146,60,0.75)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(63, -14); ctx.lineTo(68, -19); ctx.stroke();
+    // Breath plume trails forward and fades naturally into the sky.
+    const breath = ctx.createLinearGradient(66, -7, 178, 6);
+    breath.addColorStop(0, 'rgba(255,245,190,0.92)'); breath.addColorStop(0.22, 'rgba(251,146,60,0.72)'); breath.addColorStop(0.68, 'rgba(239,68,68,0.22)'); breath.addColorStop(1, 'rgba(239,68,68,0)');
+    ctx.fillStyle = breath; ctx.shadowColor = '#fb923c'; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.moveTo(64, -10); ctx.quadraticCurveTo(112, -27 + Math.sin(this.flameTimer * 9) * 5, 180, -3); ctx.quadraticCurveTo(128, 15, 64, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
   private renderCrows(ctx: CanvasRenderingContext2D) {
     for (const crow of this.crows) {
       const flap = Math.sin(crow.phase) * 0.72;
@@ -2495,15 +2585,28 @@ export class GameEngine2D {
       ctx.restore();
     }
 
-    // 6. Parry Shield
+    // 6. Soft protective ward: a subtle luminous shell that vanishes with its timer.
     if (this.isParrying) {
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 24;
-      ctx.beginPath();
-      ctx.arc(0, 0, 45, 0, Math.PI * 2);
-      ctx.stroke();
+      const pulse = 1 + Math.sin(this.flameTimer * 5) * 0.025;
+      const aura = ctx.createRadialGradient(0, 0, 20, 0, 0, 72);
+      aura.addColorStop(0, 'rgba(110,245,220,0.015)');
+      aura.addColorStop(0.68, 'rgba(110,245,220,0.09)');
+      aura.addColorStop(0.9, 'rgba(125,255,231,0.19)');
+      aura.addColorStop(1, 'rgba(125,255,231,0)');
+      ctx.fillStyle = aura; ctx.beginPath(); ctx.ellipse(0, 0, 58 * pulse, 70 * pulse, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(167,243,228,0.42)'; ctx.lineWidth = 1.5; ctx.shadowColor = '#6ee7d8'; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.ellipse(0, 0, 48 * pulse, 61 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Azure Flame skill aura; restrained sparks stay attached to the hero and expire quickly.
+    if (this.azureFlameTimer > 0) {
+      const pulse = 1 + Math.sin(this.flameTimer * 9) * 0.06;
+      const flameAura = ctx.createRadialGradient(0, 0, 8, 0, 0, 66);
+      flameAura.addColorStop(0, 'rgba(34,211,238,0.02)');
+      flameAura.addColorStop(0.55, 'rgba(34,211,238,0.12)');
+      flameAura.addColorStop(0.82, 'rgba(103,232,249,0.22)');
+      flameAura.addColorStop(1, 'rgba(34,211,238,0)');
+      ctx.fillStyle = flameAura; ctx.beginPath(); ctx.ellipse(0, -4, 58 * pulse, 69 * pulse, 0, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
@@ -3182,6 +3285,8 @@ export class GameEngine2D {
     this.beamCooldown = 0;
     this.beamTimer = 0;
     this.isBeaming = false;
+    this.azureFlameTimer = 0;
+    this.azureFlameCooldown = 0;
     this.parryCooldown = 0;
     this.parryTimer = 0;
     this.isParrying = false;

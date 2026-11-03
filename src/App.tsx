@@ -74,6 +74,8 @@ export default function App() {
     comboStreak: 0,
     flightTime: 0,
     stamina: 100,
+    flameTime: 0,
+    wardTime: 0,
   });
 
   const [kills, setKills] = useState(0);
@@ -301,13 +303,15 @@ export default function App() {
             targetKills={targetKills}
             bossEnemy={bossEnemy}
             damageNumbers={damageNumbers}
-            flightTime={cooldowns.flightTime}
             stamina={cooldowns.stamina}
             onPause={() => setGameState('paused')}
             onHelp={() => setShowTutorial(true)}
-            onFlame={() => engineRef.current?.performAttack()}
+            onFlame={() => engineRef.current?.activateAzureFlame()}
             onWard={() => engineRef.current?.performParryWard()}
             wardCooldown={cooldowns.ward}
+            flameCooldown={engineRef.current?.azureFlameCooldown || 0}
+            flameTime={cooldowns.flameTime}
+            wardTime={cooldowns.wardTime}
             controlsLayout={settings.controlsLayout}
           />
 

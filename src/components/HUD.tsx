@@ -20,13 +20,15 @@ interface HUDProps {
   targetKills: number;
   bossEnemy?: Enemy2D | null;
   damageNumbers: DamageNumber[];
-  flightTime?: number;
   stamina?: number;
   onPause: () => void;
   onHelp: () => void;
   onFlame: () => void;
   onWard: () => void;
   wardCooldown: number;
+  flameCooldown: number;
+  flameTime: number;
+  wardTime: number;
   controlsLayout: TouchControlsLayout;
 }
 
@@ -40,13 +42,15 @@ export const HUD: React.FC<HUDProps> = ({
   targetKills,
   bossEnemy,
   damageNumbers,
-  flightTime = 0,
   stamina = 100,
   onPause,
   onHelp,
   onFlame,
   onWard,
   wardCooldown,
+  flameCooldown,
+  flameTime,
+  wardTime,
   controlsLayout,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -152,15 +156,6 @@ export const HUD: React.FC<HUDProps> = ({
             <CircleHelp className="w-5 h-5" />
           </button>
 
-          {/* Only two active abilities: Azure Flame and Protection Shield */}
-          <button onClick={onFlame} className="pointer-events-auto rounded-full bg-cyan-950/90 border border-cyan-300/80 text-cyan-200 shadow-[0_0_18px_rgba(6,182,212,0.35)] active:scale-90 flex items-center justify-center" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Azure Flame Attack">
-            <Flame className="w-6 h-6" />
-          </button>
-          <button onClick={onWard} disabled={wardCooldown > 0} className="pointer-events-auto relative rounded-full bg-emerald-950/90 border border-emerald-300/80 text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.35)] active:scale-90 disabled:opacity-60 flex items-center justify-center" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">
-            <Shield className="w-6 h-6" />
-            {wardCooldown > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-black px-1 text-[9px] font-bold">{wardCooldown.toFixed(0)}</span>}
-          </button>
-
           {/* Pause Button */}
           <button
             onClick={onPause}
@@ -171,17 +166,6 @@ export const HUD: React.FC<HUDProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Supersonic Horizontal Flight Active Badge */}
-      {flightTime > 0 && (
-        <div className="self-center mt-2 flex items-center gap-2 bg-slate-950/90 border border-cyan-400 px-4 py-1.5 rounded-full shadow-[0_0_24px_rgba(6,182,212,0.6)] animate-pulse">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-          <span className="text-xs font-bold text-cyan-200">{t.flightActive}</span>
-          <span className="font-mono text-sm font-black text-white px-2 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-500/40 tabular-nums">
-            {flightTime.toFixed(1)}s
-          </span>
-        </div>
-      )}
 
       {/* Center Combo Streak Popup */}
       {comboStreak > 1 && (
@@ -215,8 +199,17 @@ export const HUD: React.FC<HUDProps> = ({
         ))}
       </div>
 
-      {/* Invisible bottom spacing so touch controls stay free */}
-      <div className="h-28" />
+      {/* Ability controls live at the bottom edge, clear of the top status HUD. */}
+      <div className="pointer-events-none absolute bottom-7 right-4 sm:right-8 flex items-end gap-3">
+        <button onClick={onFlame} disabled={flameCooldown > 0 && flameTime <= 0} className="pointer-events-auto relative rounded-full border border-cyan-200/80 bg-slate-950/75 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.28)] backdrop-blur-md active:scale-90 disabled:opacity-55 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Azure Flame">
+          <Flame className="w-7 h-7" />
+          {flameTime > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full border border-cyan-200/60 bg-slate-950 px-1.5 text-[10px] font-bold text-cyan-100">{flameTime.toFixed(0)}s</span> : flameCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{flameCooldown.toFixed(0)}</span> : null}
+        </button>
+        <button onClick={onWard} disabled={wardCooldown > 0 && wardTime <= 0} className="pointer-events-auto relative rounded-full border border-emerald-200/80 bg-slate-950/75 text-emerald-100 shadow-[0_0_24px_rgba(110,231,183,0.25)] backdrop-blur-md active:scale-90 disabled:opacity-55 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">
+          <Shield className="w-7 h-7" />
+          {wardTime > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full border border-emerald-200/60 bg-slate-950 px-1.5 text-[10px] font-bold text-emerald-100">{wardTime.toFixed(0)}s</span> : wardCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{wardCooldown.toFixed(0)}</span> : null}
+        </button>
+      </div>
     </div>
   );
 };

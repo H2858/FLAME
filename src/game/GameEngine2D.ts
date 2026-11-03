@@ -338,12 +338,22 @@ export class GameEngine2D {
   }
 
   private onResize = () => {
-    if (!this.canvas) return;
+    if (!this.canvas || !this.ctx) return;
+    // Use the canvas' actual CSS box, not the browser's layout viewport. On
+    // mobile browsers these can differ while the address/navigation bars move.
+    const rect = this.canvas.getBoundingClientRect();
+    const cssWidth = Math.max(1, Math.round(rect.width || window.innerWidth || 1));
+    const cssHeight = Math.max(1, Math.round(rect.height || window.innerHeight || 1));
     const dpr = Math.min(window.devicePixelRatio || 1, this.settings.graphicsQuality === 'ultra' ? 2 : 1.5);
-    this.canvas.width = window.innerWidth * dpr;
-    this.canvas.height = window.innerHeight * dpr;
-    this.ctx.resetTransform();
-    this.ctx.scale(dpr, dpr);
+    const pixelWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const pixelHeight = Math.max(1, Math.round(cssHeight * dpr));
+    if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
+      this.canvas.width = pixelWidth;
+      this.canvas.height = pixelHeight;
+    }
+    // setTransform is supported more broadly than resetTransform in older WebViews.
+    if (typeof this.ctx.setTransform === 'function') this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    else { this.ctx.resetTransform?.(); this.ctx.scale(dpr, dpr); }
   };
 
   public applyGraphicsQuality(quality: GameSettings['graphicsQuality']) {
@@ -1029,19 +1039,52 @@ export class GameEngine2D {
 
     const rawDt = (now - this.lastTime) / 1000;
     this.lastTime = now;
-    const dt = Math.min(rawDt, 0.05);
+    const dt = Math.min(Math.max(rawDt, 0), 0.05);
 
-    if (this.hitstopTimer > 0) {
-      this.hitstopTimer -= dt;
-      this.render();
-      this.animFrameId = requestAnimationFrame(this.tick);
-      return;
+    try {
+      if (this.hitstopTimer > 0) this.hitstopTimer -= dt;
+      else this.update(dt);
+    } catch (error) {
+      // Keep the render loop alive on mobile WebViews instead of leaving the
+      // opaque canvas at its default black when a gameplay update hits an error.
+      console.error('[FLAME] gameplay update failed:', error);
     }
 
-    this.update(dt);
-    this.render();
+    try {
+      this.render();
+    } catch (error) {
+      console.error('[FLAME] scene render failed:', error);
+      this.renderEmergencyFrame();
+    }
 
     this.animFrameId = requestAnimationFrame(this.tick);
+  }
+
+  private renderEmergencyFrame() {
+    const ctx = this.ctx;
+    const width = Math.max(1, this.canvas.clientWidth || window.innerWidth || 1);
+    const height = Math.max(1, this.canvas.clientHeight || window.innerHeight || 1);
+    try {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const dprX = this.canvas.width / width;
+      const dprY = this.canvas.height / height;
+      ctx.scale(dprX, dprY);
+      const sky = ctx.createLinearGradient(0, 0, 0, height);
+      sky.addColorStop(0, '#050b18'); sky.addColorStop(0.65, '#102a35'); sky.addColorStop(1, '#07120c');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, width, height);
+      // Always show a readable horizon and the player if a complex effect fails.
+      const floor = height * 0.77;
+      ctx.fillStyle = '#10251a'; ctx.fillRect(0, floor, width, height - floor);
+      ctx.strokeStyle = '#547b55'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, floor); ctx.lineTo(width, floor); ctx.stroke();
+      const px = Math.max(40, Math.min(width - 40, width * 0.22));
+      ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 22; ctx.fillStyle = '#22d3ee';
+      ctx.beginPath(); ctx.ellipse(px, floor - 28, 15, 25, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = '#e0faff'; ctx.beginPath(); ctx.arc(px, floor - 37, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } catch (fallbackError) {
+      console.error('[FLAME] emergency frame failed:', fallbackError);
+    }
   }
 
   private update(dt: number) {
@@ -1555,8 +1598,8 @@ export class GameEngine2D {
 
   private render() {
     const ctx = this.ctx;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const width = Math.max(1, this.canvas.clientWidth || window.innerWidth || 1);
+    const height = Math.max(1, this.canvas.clientHeight || window.innerHeight || 1);
 
     let offsetX = -this.cameraX;
     let offsetY = -this.cameraY;

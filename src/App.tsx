@@ -37,19 +37,7 @@ export default function App() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
-  // Prefer true landscape on phones; CSS fallback below handles browsers that reject orientation lock.
-  useEffect(() => {
-    const requestLandscape = async () => {
-      try {
-        const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> };
-        if (orientation?.lock) await orientation.lock('landscape');
-      } catch { /* Browser may require installed PWA/fullscreen; CSS fallback remains active. */ }
-    };
-    requestLandscape();
-    const onFullscreen = () => { if (document.fullscreenElement) requestLandscape(); };
-    document.addEventListener('fullscreenchange', onFullscreen);
-    return () => document.removeEventListener('fullscreenchange', onFullscreen);
-  }, []);
+  // Keep the original responsive viewport behavior; do not rotate the DOM or force orientation.
 
   // Engine ref
   const engineRef = useRef<GameEngine2D | null>(null);

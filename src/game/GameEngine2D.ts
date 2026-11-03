@@ -156,8 +156,35 @@ export class GameEngine2D {
   // Pitch Black Solid Continuous Ground Level (Player NEVER falls)
   public groundY = 530;
 
+  // Procedural lunar route: rolling regolith ridges with occasional hidden sinkholes.
+  private terrainHeightAt(worldX: number): number {
+    return this.groundY + Math.sin(worldX * 0.0031) * 23 + Math.sin(worldX * 0.0087 + 1.4) * 10 + Math.sin(worldX * 0.0011) * 13;
+  }
+
+  private isSinkholeAt(worldX: number): boolean {
+    // Deterministic per-run gaps, kept clear of the starting sanctuary.
+    if (worldX < 520 || worldX > this.familyAltarX - 260) return false;
+    const segment = Math.floor(worldX / 610);
+    const center = segment * 610 + 350 + Math.sin(segment * 17.31) * 72;
+    const width = 54 + (segment % 3) * 13;
+    return Math.abs(worldX - center) < width;
+  }
+
+
+  /** Four visual acts, each with its own atmosphere and silhouette language. */
+  private getActPalette() {
+    const act = Math.floor(this.currentStageIndex / 5);
+    const palettes = [
+      { top: '#050b1b', mid: '#102b4a', low: '#24445b', haze: 'rgba(56,189,248,.12)', moon: '#c9e5f5', ridge: '#101d32', accent: '#38bdf8' },
+      { top: '#160b22', mid: '#45213b', low: '#8a4b48', haze: 'rgba(251,146,60,.14)', moon: '#ffe1bd', ridge: '#28152b', accent: '#fb923c' },
+      { top: '#080d20', mid: '#24205a', low: '#51406f', haze: 'rgba(167,139,250,.16)', moon: '#ded5ff', ridge: '#17152f', accent: '#a78bfa' },
+      { top: '#10050f', mid: '#421327', low: '#771f2e', haze: 'rgba(244,63,94,.16)', moon: '#ffd4d9', ridge: '#220d1c', accent: '#fb7185' },
+    ];
+    return palettes[Math.min(3, act)];
+  }
+
   // The Flame Family Sanctuary at the END of the road
-  public familyAltarX = 4200;
+  public familyAltarX = 7600;
   public isReunited = false;
   public reunionTimer = 0;
   public isBattleCleared = false; // Family ONLY appears after battle is cleared
@@ -790,7 +817,7 @@ export class GameEngine2D {
       this.isBattleCleared = true;
 
       // Reveal the family altar at the end of the road!
-      this.familyAltarX = this.x + 950;
+      this.familyAltarX = this.x + 1650;
       soundManager.playFamilyRevealChime();
 
       // All active enemies vaporize into cinders
@@ -891,7 +918,7 @@ export class GameEngine2D {
     const side = Math.random() < 0.35 ? -1 : 1;
     let spawnX = this.x + (side === 1 ? 1 : -1) * (580 + Math.random() * 260);
 
-    const spawnY = this.groundY - 30;
+    const spawnY = this.terrainHeightAt(spawnX) - 30;
     const diff = stage.difficultyScale;
     let width = 50;
     let height = 50;
@@ -961,7 +988,7 @@ export class GameEngine2D {
     soundManager.playNova();
     this.addScreenShake(22);
 
-    const spawnX = this.x + 600;
+    const spawnX = this.x + 680;
     const diff = this.stages[this.currentStageIndex].difficultyScale;
     let width = 120;
     let height = 140;
@@ -979,7 +1006,7 @@ export class GameEngine2D {
       id: this.nextEntityId++,
       type: bossType,
       x: spawnX,
-      y: this.groundY - height / 2,
+      y: this.terrainHeightAt(spawnX) - height / 2,
       vx: 0,
       vy: 0,
       width,
@@ -1152,12 +1179,23 @@ export class GameEngine2D {
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
-      // CONTINUOUS SOLID GROUND COLLISION (Player NEVER falls!)
+      // Uneven lunar ground. Sinkholes intentionally remove the floor and allow a fall.
       this.isGrounded = false;
-      if (this.y + this.height / 2 >= this.groundY) {
-        this.y = this.groundY - this.height / 2;
+      const floorY = this.terrainHeightAt(this.x);
+      if (!this.isSinkholeAt(this.x) && this.y + this.height / 2 >= floorY) {
+        this.y = floorY - this.height / 2;
         this.vy = 0;
         this.isGrounded = true;
+      } else if (this.isSinkholeAt(this.x) && this.y > floorY + 145) {
+        // Splash-out death: blue droplets and a brief impact shake before game over.
+        for (let i = 0; i < 34; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const speed = 70 + Math.random() * 250;
+          this.particles.push({ x: this.x, y: floorY + 8, vx: Math.cos(a) * speed, vy: -Math.abs(Math.sin(a) * speed) - 40, size: 3 + Math.random() * 7, color: Math.random() < 0.5 ? '#38bdf8' : '#bae6fd', alpha: 1, life: 0.8, maxLife: 0.8, shape: 'spark' });
+        }
+        this.addScreenShake(18);
+        this.stats.hp = this.stats.maxHp;
+        this.damagePlayer(this.stats.maxHp + 999);
       }
 
       // Elevated Monolith Platforms (Clean One-Way Landing)
@@ -1266,8 +1304,9 @@ export class GameEngine2D {
       // Solid ground for ground enemies
       enemy.vy += 1400 * dt;
       enemy.y += enemy.vy * dt;
-      if (enemy.y + enemy.height / 2 >= this.groundY) {
-        enemy.y = this.groundY - enemy.height / 2;
+      const enemyFloor = this.terrainHeightAt(enemy.x);
+      if (!this.isSinkholeAt(enemy.x) && enemy.y + enemy.height / 2 >= enemyFloor) {
+        enemy.y = enemyFloor - enemy.height / 2;
         enemy.vy = 0;
       }
 
@@ -1640,11 +1679,12 @@ export class GameEngine2D {
     }
 
     // 1. Deep Cosmic Night Sky (NO TREES)
+    const palette = this.getActPalette();
     const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-    skyGrad.addColorStop(0, '#02040a');
-    skyGrad.addColorStop(0.35, '#050a18');
-    skyGrad.addColorStop(0.7, '#070e24');
-    skyGrad.addColorStop(1, '#010206');
+    skyGrad.addColorStop(0, palette.top);
+    skyGrad.addColorStop(0.42, palette.mid);
+    skyGrad.addColorStop(0.78, palette.low);
+    skyGrad.addColorStop(1, '#05060c');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, width, height);
 
@@ -1667,18 +1707,26 @@ export class GameEngine2D {
     const moonR = 95;
 
     const moonGlow = ctx.createRadialGradient(moonX, moonY, moonR * 0.3, moonX, moonY, moonR * 2.4);
-    moonGlow.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
-    moonGlow.addColorStop(0.45, 'rgba(14, 165, 233, 0.1)');
+    moonGlow.addColorStop(0, palette.haze);
+    moonGlow.addColorStop(0.45, 'rgba(14, 165, 233, 0.08)');
     moonGlow.addColorStop(1, 'rgba(1, 2, 6, 0)');
     ctx.fillStyle = moonGlow;
     ctx.beginPath();
     ctx.arc(moonX, moonY, moonR * 2.4, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#e0f2fe';
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = palette.moon;
+    ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2); ctx.fill();
+    // Visible crater basins and terminator shading make the moon read as a world, not a flat disc.
+    ctx.save(); ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2); ctx.clip();
+    const craterData = [[-.38,-.24,18],[.25,-.42,12],[.48,.12,23],[-.12,.35,27],[-.58,.42,10],[.05,-.02,8]];
+    for (const [cx, cy, r] of craterData) {
+      ctx.fillStyle = 'rgba(40,58,76,.16)'; ctx.beginPath(); ctx.arc(moonX + cx * moonR, moonY + cy * moonR, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(moonX + cx * moonR - 2, moonY + cy * moonR - 2, r * .82, Math.PI * 1.05, Math.PI * 1.9); ctx.stroke();
+    }
+    const shade = ctx.createLinearGradient(moonX - moonR, moonY, moonX + moonR, moonY);
+    shade.addColorStop(0, 'rgba(2,8,20,.02)'); shade.addColorStop(.68, 'rgba(2,8,20,.02)'); shade.addColorStop(1, 'rgba(2,8,20,.42)');
+    ctx.fillStyle = shade; ctx.fillRect(moonX-moonR, moonY-moonR, moonR*2, moonR*2); ctx.restore();
 
     // 2. CELESTIAL METEORS & SHOOTING STARS (نيازك وشهب تمر في السماء)
     this.renderMeteors(ctx);
@@ -1687,7 +1735,7 @@ export class GameEngine2D {
 
     // 3. Distant Misty Mountain Silhouettes (Parallax 0.06)
     ctx.save();
-    ctx.fillStyle = '#040714';
+    ctx.fillStyle = palette.ridge;
     for (let i = -3; i < 22; i++) {
       const px = i * 360 - this.cameraX * 0.06;
       const py = height * 0.46;
@@ -1696,6 +1744,30 @@ export class GameEngine2D {
       ctx.lineTo(px + 180, py);
       ctx.lineTo(px + 360, py + 350);
       ctx.fill();
+    }
+    ctx.restore();
+
+    // Distant act landmarks: broken citadels, spires and floating basalt shelves.
+    // The parallax offset is deliberately tiny to create depth without distracting from combat.
+    ctx.save();
+    const parallax = this.cameraX * 0.13;
+    for (let i = 0; i < 9; i++) {
+      const baseX = ((i * 287 - parallax) % (width + 520)) - 180;
+      const baseY = height * (0.48 + (i % 3) * 0.035);
+      const towerW = 42 + (i % 4) * 17;
+      ctx.fillStyle = i % 2 ? '#111a31' : palette.ridge;
+      ctx.beginPath();
+      ctx.moveTo(baseX - 18, baseY + 100); ctx.lineTo(baseX - 9, baseY + 18);
+      ctx.lineTo(baseX + towerW * .5, baseY - (70 + (i % 3) * 22));
+      ctx.lineTo(baseX + towerW + 10, baseY + 18); ctx.lineTo(baseX + towerW + 22, baseY + 100); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = palette.accent; ctx.globalAlpha = .2 + (i % 3) * .08;
+      ctx.fillRect(baseX + towerW * .48, baseY + 2, 3, 42 + (i % 2) * 18); ctx.globalAlpha = 1;
+      // Floating rock shelf with luminous mineral seam.
+      if (i % 2 === 0) {
+        const fx = baseX + 75; const fy = baseY + 65;
+        ctx.fillStyle = '#101a2c'; ctx.beginPath(); ctx.moveTo(fx-45,fy); ctx.lineTo(fx-24,fy-12); ctx.lineTo(fx+34,fy-8); ctx.lineTo(fx+54,fy+3); ctx.lineTo(fx+25,fy+17); ctx.lineTo(fx-30,fy+13); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = palette.accent; ctx.globalAlpha = .35; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx-20,fy+2); ctx.lineTo(fx+24,fy+4); ctx.stroke(); ctx.globalAlpha = 1;
+      }
     }
     ctx.restore();
 
@@ -1716,18 +1788,87 @@ export class GameEngine2D {
     const groundRight = this.cameraX + width / this.cameraZoom + 600;
     const groundWidth = groundRight - groundLeft;
 
-    // Deep True Pitch Black Obsidian (#000000)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(groundLeft, this.groundY, groundWidth, 800);
-
-    // Subtle dark obsidian edge
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2.5;
-    ctx.shadowBlur = 0;
+    // Sculpted lunar regolith: rolling ridges, layered grey strata and sudden water-filled fissures.
     ctx.beginPath();
-    ctx.moveTo(groundLeft, this.groundY);
-    ctx.lineTo(groundRight, this.groundY);
+    let drawingFloor = false;
+    for (let wx = groundLeft; wx <= groundRight; wx += 12) {
+      if (this.isSinkholeAt(wx)) { drawingFloor = false; continue; }
+      const gy = this.terrainHeightAt(wx);
+      if (!drawingFloor) { ctx.moveTo(wx, gy); drawingFloor = true; }
+      else ctx.lineTo(wx, gy);
+    }
+    ctx.lineTo(groundRight, height + this.cameraY + 1000);
+    ctx.lineTo(groundLeft, height + this.cameraY + 1000);
+    ctx.closePath();
+    const regolith = ctx.createLinearGradient(0, this.groundY - 55, 0, this.groundY + 380);
+    regolith.addColorStop(0, '#777d86');
+    regolith.addColorStop(0.12, '#454b55');
+    regolith.addColorStop(0.42, '#242a34');
+    regolith.addColorStop(1, '#080b12');
+    ctx.fillStyle = regolith;
+    ctx.fill();
+
+    // Crater ridges and rock seams follow the terrain contour.
+    ctx.strokeStyle = 'rgba(190,199,210,0.52)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let wx = groundLeft; wx <= groundRight; wx += 10) {
+      if (this.isSinkholeAt(wx)) continue;
+      const gy = this.terrainHeightAt(wx);
+      if (wx === groundLeft || this.isSinkholeAt(wx - 10)) ctx.moveTo(wx, gy);
+      else ctx.lineTo(wx, gy);
+    }
     ctx.stroke();
+    ctx.strokeStyle = 'rgba(8,12,20,0.75)';
+    ctx.lineWidth = 1;
+    for (let rock = 0; rock < 34; rock++) {
+      const wx = groundLeft + ((rock * 173 + 47) % Math.max(1, groundWidth));
+      if (this.isSinkholeAt(wx)) continue;
+      const gy = this.terrainHeightAt(wx);
+      ctx.beginPath(); ctx.moveTo(wx, gy + 18 + (rock % 5) * 5); ctx.lineTo(wx + 24 + (rock % 4) * 9, gy + 22 + (rock % 5) * 5); ctx.stroke();
+    }
+
+    // Deep sinkholes reveal a cold underground pool; their edges are jagged and readable.
+    for (let wx = groundLeft; wx <= groundRight; wx += 8) {
+      if (!this.isSinkholeAt(wx) || this.isSinkholeAt(wx - 8)) continue;
+      const center = wx;
+      const left = center - 75;
+      const right = center + 75;
+      const top = this.terrainHeightAt(center) - 2;
+      ctx.fillStyle = '#070d18'; ctx.fillRect(left, top, right - left, 250);
+      const water = ctx.createLinearGradient(0, top + 35, 0, top + 230);
+      water.addColorStop(0, 'rgba(14,116,144,0.9)'); water.addColorStop(1, 'rgba(2,6,23,0.98)');
+      ctx.fillStyle = water; ctx.fillRect(left + 5, top + 48, right - left - 10, 180);
+      ctx.strokeStyle = 'rgba(103,232,249,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left + 18, top + 9); ctx.lineTo(left + 35, top - 3); ctx.moveTo(right - 35, top - 2); ctx.lineTo(right - 18, top + 8); ctx.lineTo(right, top); ctx.stroke();
+    }
+
+    // Weather: drifting cloud bands and fine rain, transitioning from moonlit blue to dawn gold.
+    const weatherPhase = (this.currentStageIndex % 5) / 4;
+    if (weatherPhase > 0.55) {
+      const dawn = (weatherPhase - 0.55) / 0.45;
+      const dawnGlow = ctx.createLinearGradient(0, 0, 0, height * 0.75);
+      dawnGlow.addColorStop(0, `rgba(251,146,60,${0.08 + dawn * 0.18})`);
+      dawnGlow.addColorStop(1, 'rgba(251,146,60,0)');
+      ctx.fillStyle = dawnGlow; ctx.fillRect(0, 0, width, height * 0.75);
+      ctx.fillStyle = `rgba(251,191,36,${0.18 + dawn * 0.35})`;
+      ctx.beginPath(); ctx.arc(width * 0.72, height * 0.38, 34 + dawn * 20, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let cloud = 0; cloud < 7; cloud++) {
+      const cx = ((cloud * 241 + this.flameTimer * (7 + cloud * 2)) % (width + 360)) - 180;
+      const cy = 70 + cloud * 35;
+      ctx.fillStyle = `rgba(100,116,139,${0.055 + (cloud % 2) * 0.04})`;
+      ctx.beginPath(); ctx.ellipse(cx, cy, 112, 19, 0, 0, Math.PI * 2); ctx.ellipse(cx + 38, cy - 9, 58, 23, 0, 0, Math.PI * 2); ctx.ellipse(cx - 44, cy + 4, 50, 14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(186,210,235,${0.025 + (cloud % 3) * .012})`; ctx.fillRect(cx - 105, cy + 16, 210, 2);
+    }
+    if (this.currentStageIndex % 5 === 3 || this.currentStageIndex % 5 === 4) {
+      ctx.strokeStyle = 'rgba(147,197,253,0.24)'; ctx.lineWidth = 1;
+      for (let rain = 0; rain < 85; rain++) {
+        const rx = (rain * 83 + this.flameTimer * 260) % width;
+        const ry = (rain * 47 + this.flameTimer * 520) % height;
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 7, ry + 17); ctx.stroke();
+      }
+    }
 
     // 6. FLOATING MONOLITHS WITH LUMINOUS NEON STRIPS
     this.renderNeonPlatforms(ctx);
@@ -2916,7 +3057,7 @@ export class GameEngine2D {
     this.setupWorldTokens();
 
     this.x = 200;
-    this.y = 460;
+    this.y = this.terrainHeightAt(this.x) - this.height / 2;
     this.vx = 0;
     this.vy = 0;
     this.stats.hp = this.stats.maxHp;

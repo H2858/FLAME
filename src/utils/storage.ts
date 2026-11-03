@@ -54,7 +54,7 @@ export const PRESET_LEFTY: TouchControlsLayout = {
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  language: 'ar',
+  language: 'en',
   graphicsQuality: 'high',
   masterVolume: 0.8,
   sfxVolume: 0.85,
@@ -75,6 +75,7 @@ export function loadGameSave(): CloudSaveData {
       return {
         ...data,
         unlockedStage: data.unlockedStage || 1,
+        playerStats: { ...data.playerStats, flightLevel: Math.max(1, data.playerStats?.flightLevel || 1) },
         completedStages: data.completedStages || [],
         skillLevels: {
           flameSlash: 1,
@@ -85,11 +86,14 @@ export function loadGameSave(): CloudSaveData {
           parryWard: 1,
           azureNova: 1,
           soulMagnet: 1,
+          flightDuration: 1,
           ...(data.skillLevels || {}),
+          fantasticalRecall: 1, celestialBeam: 1, orbitalWisps: 1, flameDash: 1, azureNova: 1, soulMagnet: 1,
         },
         settings: {
           ...DEFAULT_SETTINGS,
           ...(data.settings || {}),
+          language: 'en',
           controlsLayout: {
             ...DEFAULT_CONTROLS_LAYOUT,
             ...(data.settings?.controlsLayout || {}),
@@ -113,6 +117,7 @@ export function loadGameSave(): CloudSaveData {
       attackPower: 28,
       defense: 6,
       souls: 0,
+      flightLevel: 1,
       level: 1,
       xp: 0,
     },
@@ -125,6 +130,7 @@ export function loadGameSave(): CloudSaveData {
       parryWard: 1,
       azureNova: 1,
       soulMagnet: 1,
+      flightDuration: 1,
     },
     unlockedStage: 1,
     completedStages: [],

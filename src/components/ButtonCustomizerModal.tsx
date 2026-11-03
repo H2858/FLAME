@@ -185,7 +185,7 @@ export const ButtonCustomizerModal: React.FC<ButtonCustomizerModalProps> = ({
         </div>
 
         {/* Action buttons */}
-        {(Object.keys(layout.buttons) as (keyof typeof layout.buttons)[]).map((btnKey) => {
+        {(['attack', 'jump', 'ward'] as (keyof typeof layout.buttons)[]).map((btnKey) => {
           const btn = layout.buttons[btnKey];
           const isSelected = selectedElement === btnKey;
 

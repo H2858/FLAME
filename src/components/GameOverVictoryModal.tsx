@@ -71,17 +71,6 @@ export const GameOverVictoryModal: React.FC<GameOverVictoryModalProps> = ({
           </p>
         )}
 
-        {/* Reward Box */}
-        <div className="bg-slate-950/70 border border-cyan-500/20 rounded-xl p-3 mb-5 flex items-center justify-around">
-          <div>
-            <span className="text-[11px] text-slate-400">{t.souls}</span>
-            <div className="font-mono text-base font-bold text-cyan-300 flex items-center justify-center gap-1">
-              <Sparkles className="w-4 h-4" />
-              <span>+{soulsEarned}</span>
-            </div>
-          </div>
-        </div>
-
         {/* Action Buttons */}
         <div className="space-y-2.5">
           {isVictory && onNextStage && (

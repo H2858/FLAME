@@ -151,8 +151,10 @@ export class GameEngine2D {
   public facing: 1 | -1 = 1;
   public flameTimer = 0;
 
-  // HORIZONTAL SUPERSONIC FLIGHT MODE (Token-activated horizontal rocket flame)
+  // TOKEN-ACTIVATED FLIGHT MODE (two-axis player-controlled flight)
   public flightDuration = 0;
+  public stamina = 100;
+  public readonly maxStamina = 100;
   public isHorizontalFlightActive = false;
   private flightRamCooldown = 0;
 
@@ -266,6 +268,7 @@ export class GameEngine2D {
     novaEnergy: number;
     comboStreak: number;
     flightTime: number;
+    stamina: number;
   }) => void;
   public onDamageNumber?: (dmg: DamageNumber) => void;
   public onStageProgress?: (killed: number, target: number, wave: number) => void;
@@ -280,6 +283,7 @@ export class GameEngine2D {
     critChance: 0.15,
     speed: 460,
     souls: 0,
+    flightLevel: 1,
     level: 1,
     xp: 0,
     nextXp: 100,
@@ -294,6 +298,7 @@ export class GameEngine2D {
     parryWard: 1,
     azureNova: 1,
     soulMagnet: 1,
+    flightDuration: 1,
   };
 
   // 20 Progressive Stages
@@ -400,11 +405,12 @@ export class GameEngine2D {
     this.worldTokens = [];
     // Place tokens every 600px along the forward path
     for (let i = 0; i < 18; i++) {
-      const isFlight = i % 2 === 0;
-      const x = 650 + i * 550;
+      const isFlight = i % 3 === 0;
+      const x = 900 + i * 720 + Math.random() * 180;
       // Alternate between ground height and elevated platform height
       const onPlatform = i % 3 === 1;
-      const y = onPlatform ? 330 : this.groundY - 35;
+      const inSky = i % 7 === 4;
+      const y = inSky ? 205 + (i % 3) * 34 : onPlatform ? 330 : this.groundY - 35;
 
       this.worldTokens.push({
         id: i + 1,
@@ -447,11 +453,7 @@ export class GameEngine2D {
       this.jump();
     }
     if (e.code === 'KeyJ') this.performAttack();
-    if (e.code === 'KeyK' || e.code === 'ShiftLeft') this.performDash();
-    if (e.code === 'KeyL') this.performFantasticalRecall();
-    if (e.code === 'KeyU') this.performCelestialBeam();
     if (e.code === 'KeyI') this.performParryWard();
-    if (e.code === 'KeyO') this.performNova();
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
@@ -703,8 +705,9 @@ export class GameEngine2D {
   }
 
   public performParryWard() {
-    if (this.parryCooldown > 0 || this.isParrying || this.stats.hp <= 0 || this.isReunited) return;
+    if (this.parryCooldown > 0 || this.isParrying || this.stats.hp <= 0 || this.isReunited || this.stamina < 25) return;
 
+    this.stamina = Math.max(0, this.stamina - 25);
     this.isParrying = true;
     this.parryTimer = 0.75 + (this.skills.parryWard - 1) * 0.15;
     this.parryCooldown = 4.5;
@@ -797,7 +800,7 @@ export class GameEngine2D {
     enemy.state = 'dead';
     soundManager.playEnemyDeath();
 
-    const soulBonus = 1 + (this.skills.soulMagnet - 1) * 0.25;
+    const soulBonus = 1;
     const soulValue = Math.round((enemy.isBoss ? 150 : enemy.type === 'magma_golem' ? 45 : 12) * soulBonus);
 
     this.soulMotes.push({
@@ -1117,6 +1120,7 @@ export class GameEngine2D {
     this.updateLowEyes(dt);
     this.updateMeteors(dt);
     this.updateCrows(dt);
+    this.stamina = Math.min(this.maxStamina, this.stamina + dt * 2.5);
     this.updateWorldTokens(dt);
 
     // 2. Family Reunion Check & CINEMATIC ZOOM
@@ -1176,8 +1180,10 @@ export class GameEngine2D {
         this.isHorizontalFlightActive = true;
 
         // Piercing forward horizontal rocket velocity!
-        const rocketSpeed = 780;
-        this.vx = this.facing * rocketSpeed;
+        const horizontalInput = this.moveInput.x || (this.keysPressed['ArrowRight'] || this.keysPressed['KeyD'] ? 1 : this.keysPressed['ArrowLeft'] || this.keysPressed['KeyA'] ? -1 : this.facing * 0.35);
+        const rocketSpeed = 620;
+        this.vx = horizontalInput * rocketSpeed;
+        if (Math.abs(horizontalInput) > 0.08) this.facing = horizontalInput > 0 ? 1 : -1;
 
         // Steer vertical trajectory smoothly with joystick / W/S
         let inputY = this.moveInput.y;
@@ -1188,8 +1194,9 @@ export class GameEngine2D {
         this.vy = inputY * 340;
 
         // Bound vertical flight so it stays in the playable zone
-        if (this.y < 150) this.y = 150;
-        if (this.y > this.groundY - 30) this.y = this.groundY - 30;
+        const flightTop = Math.max(95, this.cameraY + 90);
+        const flightBottom = this.terrainHeightAt(this.x) - 28;
+        this.y = Math.max(flightTop, Math.min(flightBottom, this.y));
 
         // Supersonic sonic boom shockwaves
         this.flightRamCooldown -= dt;
@@ -1341,6 +1348,7 @@ export class GameEngine2D {
         novaEnergy: this.novaEnergy,
         comboStreak: this.comboStreak,
         flightTime: Math.max(0, this.flightDuration),
+        stamina: this.stamina,
       });
     }
 
@@ -1397,7 +1405,7 @@ export class GameEngine2D {
 
       if (p.isEnemy) {
         if (Math.hypot(p.x - this.x, p.y - this.y) < p.radius + 22) {
-          if (this.skills.orbitalWisps > 1 && this.orbitalWispCooldown <= 0) {
+          if (false && this.skills.orbitalWisps > 1 && this.orbitalWispCooldown <= 0) {
             this.orbitalWispCooldown = Math.max(1.8, 6.2 - (this.skills.orbitalWisps - 1) * 0.65);
             soundManager.playBlast();
             this.addScreenShake(3);
@@ -1419,7 +1427,7 @@ export class GameEngine2D {
     }
 
     // 7. Soul Magnet
-    const magnetRadius = 220 + (this.skills.soulMagnet - 1) * 80;
+    const magnetRadius = 220;
     for (let i = this.soulMotes.length - 1; i >= 0; i--) {
       const m = this.soulMotes[i];
       m.x += m.vx * dt;
@@ -1491,7 +1499,7 @@ export class GameEngine2D {
 
         if (token.type === 'flight') {
           // Trigger 7.5s horizontal supersonic flight!
-          this.flightDuration = 7.5;
+          this.flightDuration = 5 + Math.max(0, (this.stats.flightLevel || 1) - 1) * 1.5;
           soundManager.playFlightTokenPickup();
           this.addScreenShake(6);
 
@@ -1523,16 +1531,16 @@ export class GameEngine2D {
             });
           }
         } else if (token.type === 'stamina') {
-          // Restore +50 HP & 100% Supernova energy
-          this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 50);
-          this.novaEnergy = 100;
+          // Stamina core refills the defensive stamina pool and restores a little health.
+          this.stamina = this.maxStamina;
+          this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 20);
           soundManager.playStaminaTokenPickup();
           if (this.onStatsUpdate) this.onStatsUpdate({ ...this.stats });
 
           if (this.onDamageNumber && this.settings.damageNumbers) {
             this.onDamageNumber({
               id: Math.random(),
-              text: '💚 STAMINA FULL!',
+              text: '✦ STAMINA RESTORED!',
               x: this.x - this.cameraX,
               y: this.y - this.cameraY - 50,
               opacity: 1,
@@ -1770,23 +1778,68 @@ export class GameEngine2D {
     shade.addColorStop(0, 'rgba(2,8,20,.02)'); shade.addColorStop(.68, 'rgba(2,8,20,.02)'); shade.addColorStop(1, 'rgba(2,8,20,.42)');
     ctx.fillStyle = shade; ctx.fillRect(moonX-moonR, moonY-moonR, moonR*2, moonR*2); ctx.restore();
 
+    // Aurora Borealis appears on selected chapters (4, 9, 14, 19).
+    if ([3, 8, 13, 18].includes(this.currentStageIndex)) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (let band = 0; band < 4; band++) {
+        const phase = this.flameTimer * (0.22 + band * 0.035) + band * 1.7;
+        const gradient = ctx.createLinearGradient(0, 35 + band * 22, 0, height * 0.58);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.35, band % 2 ? 'rgba(45,212,191,0.00)' : 'rgba(34,211,238,0.00)');
+        gradient.addColorStop(0.68, band % 2 ? 'rgba(45,212,191,0.13)' : 'rgba(139,92,246,0.12)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(-30, 90 + band * 14);
+        for (let x = 0; x <= width + 30; x += 24) {
+          const waveY = 125 + band * 23 + Math.sin(x * 0.006 + phase) * (28 + band * 4) + Math.sin(x * 0.014 - phase) * 9;
+          ctx.lineTo(x, waveY);
+        }
+        ctx.lineTo(width + 30, height * 0.58); ctx.lineTo(-30, height * 0.58); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // 2. CELESTIAL METEORS & SHOOTING STARS (نيازك وشهب تمر في السماء)
     this.renderMeteors(ctx);
     // Ravens are rendered in screen space so they visibly cross in front of the moon.
     this.renderCrows(ctx);
 
-    // 3. Distant Misty Mountain Silhouettes (Parallax 0.06)
+    // 3. Layered alpine mountain range with irregular ridgelines, rock facets and occasional snow caps.
     ctx.save();
-    ctx.fillStyle = palette.ridge;
-    for (let i = -3; i < 22; i++) {
-      const px = i * 360 - this.cameraX * 0.06;
-      const mountainBaseY = height * 0.80;
-      const mountainPeakY = height * 0.38;
-      ctx.beginPath();
-      ctx.moveTo(px, mountainBaseY);
-      ctx.lineTo(px + 180, mountainPeakY);
-      ctx.lineTo(px + 360, mountainBaseY);
-      ctx.fill();
+    const ridgeOffset = this.cameraX * 0.055;
+    for (let i = -2; i < 8; i++) {
+      const mx = i * 760 - (ridgeOffset % 760);
+      const baseY = height * 0.805;
+      const peakX = mx + 260 + (i % 3) * 85;
+      const peakY = height * (0.36 + (i % 4) * 0.035);
+      const leftShoulder = mx + 105;
+      const rightShoulder = mx + 505;
+      const ridge = [
+        [mx - 80, baseY], [leftShoulder, baseY - 55], [mx + 175, peakY + 115],
+        [peakX - 72, peakY + 48], [peakX, peakY], [peakX + 54, peakY + 72],
+        [mx + 420, baseY - 82], [rightShoulder, baseY],
+      ];
+      ctx.beginPath(); ctx.moveTo(ridge[0][0], ridge[0][1]);
+      for (let r = 1; r < ridge.length; r++) ctx.lineTo(ridge[r][0], ridge[r][1]);
+      ctx.closePath();
+      const rock = ctx.createLinearGradient(mx, peakY, mx + 520, baseY);
+      rock.addColorStop(0, i % 2 ? '#17253b' : '#1b2b43');
+      rock.addColorStop(0.55, palette.ridge);
+      rock.addColorStop(1, '#080f20');
+      ctx.fillStyle = rock; ctx.fill();
+      // Lit rock face planes create natural slopes rather than flat triangles.
+      ctx.fillStyle = 'rgba(115,151,177,0.10)';
+      ctx.beginPath(); ctx.moveTo(peakX, peakY); ctx.lineTo(peakX - 72, peakY + 48); ctx.lineTo(mx + 175, baseY - 55); ctx.lineTo(peakX - 18, peakY + 92); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(2,8,23,0.24)';
+      ctx.beginPath(); ctx.moveTo(peakX, peakY); ctx.lineTo(peakX + 54, peakY + 72); ctx.lineTo(mx + 420, baseY - 82); ctx.closePath(); ctx.fill();
+      // Snow is reserved for the colder acts and only sits on the summit ridge.
+      if (i % 3 === 0 || this.currentStageIndex >= 10) {
+        ctx.fillStyle = 'rgba(218,235,246,0.82)';
+        ctx.beginPath(); ctx.moveTo(peakX, peakY + 2); ctx.lineTo(peakX - 25, peakY + 29); ctx.lineTo(peakX - 12, peakY + 25); ctx.lineTo(peakX + 2, peakY + 39); ctx.lineTo(peakX + 15, peakY + 23); ctx.lineTo(peakX + 28, peakY + 31); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.42)'; ctx.beginPath(); ctx.moveTo(peakX, peakY + 2); ctx.lineTo(peakX - 12, peakY + 25); ctx.lineTo(peakX + 2, peakY + 18); ctx.closePath(); ctx.fill();
+      }
     }
     ctx.restore();
 
@@ -1889,13 +1942,17 @@ export class GameEngine2D {
       ctx.beginPath(); ctx.ellipse(cx, cy, 112, 19, 0, 0, Math.PI * 2); ctx.ellipse(cx + 38, cy - 9, 58, 23, 0, 0, Math.PI * 2); ctx.ellipse(cx - 44, cy + 4, 50, 14, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = `rgba(186,210,235,${0.025 + (cloud % 3) * .012})`; ctx.fillRect(cx - 105, cy + 16, 210, 2);
     }
-    if (this.currentStageIndex % 5 === 3 || this.currentStageIndex % 5 === 4) {
-      ctx.strokeStyle = 'rgba(147,197,253,0.24)'; ctx.lineWidth = 1;
-      for (let rain = 0; rain < 85; rain++) {
-        const rx = (rain * 83 + this.flameTimer * 260) % width;
-        const ry = (rain * 47 + this.flameTimer * 520) % height;
-        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 7, ry + 17); ctx.stroke();
+    if ([5, 6, 7, 8].includes(this.currentStageIndex)) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(35,66,92,0.10)'; ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = 'rgba(174,213,239,0.30)'; ctx.lineWidth = 1;
+      const rainCount = Math.max(180, Math.floor(width * height / 4200));
+      for (let rain = 0; rain < rainCount; rain++) {
+        const rx = (rain * 83.17 + this.flameTimer * 310) % (width + 24);
+        const ry = (rain * 47.31 + this.flameTimer * 590) % (height + 24);
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 6, ry + 20); ctx.stroke();
       }
+      ctx.restore();
     }
 
     // 6. FLOATING MONOLITHS WITH LUMINOUS NEON STRIPS
@@ -2301,7 +2358,7 @@ export class GameEngine2D {
     }
 
     // Orbital Wisps: unlockable rotating guard-blades around the hero.
-    if (this.skills.orbitalWisps > 1 && !this.isHorizontalFlightActive) {
+    if (false && this.skills.orbitalWisps > 1 && !this.isHorizontalFlightActive) {
       const wispCount = Math.min(5, 2 + this.skills.orbitalWisps);
       for (let i = 0; i < wispCount; i++) {
         const angle = this.flameTimer * 2.4 + (i / wispCount) * Math.PI * 2;
@@ -3117,6 +3174,7 @@ export class GameEngine2D {
     this.targetCameraZoom = 1.0;
     this.flightDuration = 0;
     this.isHorizontalFlightActive = false;
+    this.stamina = this.maxStamina;
     this.reunionTimer = 0;
     this.spawnTimer = 0;
     this.meteorSpawnTimer = 1.8;

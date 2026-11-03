@@ -36,7 +36,8 @@ export interface PlayerStats {
   defense: number;
   critChance: number;
   speed: number;
-  souls: number;
+  souls: number; // Legacy save field; displayed and spent as Gems.
+  flightLevel: number;
   level: number;
   xp: number;
   nextXp: number;
@@ -50,7 +51,8 @@ export interface SkillLevels {
   flameDash: number;          // Dash speed & i-frames
   parryWard: number;          // Shield parry & soul siphon
   azureNova: number;          // Supernova ultimate
-  soulMagnet: number;         // Soul collection radius & yield
+  soulMagnet: number;         // Legacy save compatibility only
+  flightDuration: number;     // Flight token duration upgrade
 }
 
 export interface ControlButtonPosition {
@@ -110,6 +112,7 @@ export interface CloudSaveData {
     attackPower: number;
     defense: number;
     souls: number;
+    flightLevel: number;
     level: number;
     xp: number;
   };

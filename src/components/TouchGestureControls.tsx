@@ -34,10 +34,7 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
       engine.performAttack('horizontal');
     }
 
-    // A simultaneous two-finger press is the ultimate, with a short recognition window.
-    if (pointers.current.size >= 2 && [...pointers.current.values()].every(v => now - v.startedAt < 180)) {
-      engine.performNova();
-    }
+
   };
 
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -54,9 +51,10 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
     if (state.zone === 'move' && leftPointer.current === e.pointerId) {
       // Thumb-relative analog movement; dead-zone and smoothing reduce jitter.
       const target = Math.max(-1, Math.min(1, dx / 68));
-      engine.moveInput = { x: Math.abs(target) < 0.12 ? 0 : target, y: 0 };
+      const vertical = engine.isHorizontalFlightActive ? Math.max(-1, Math.min(1, dy / 68)) : 0;
+      engine.moveInput = { x: Math.abs(target) < 0.12 ? 0 : target, y: Math.abs(vertical) < 0.12 ? 0 : vertical };
       if (Math.abs(target) > 0.12) engine.facing = target > 0 ? 1 : -1;
-      if (dy < -58 && Math.abs(dy) > Math.abs(dx) * 1.2 && now - state.startedAt < 450) {
+      if (!engine.isHorizontalFlightActive && dy < -58 && Math.abs(dy) > Math.abs(dx) * 1.2 && now - state.startedAt < 450) {
         engine.jump();
         state.startedAt = now + 10000; // one jump per gesture
       }
@@ -96,19 +94,13 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
       if (!state.longPressFired && dy > 60 && dy > Math.abs(dx) * 1.2) engine.performParryWard();
       else if (!state.longPressFired && distance < 24) {
         const now = performance.now();
-        if (lastTap.current?.zone === 'move' && now - lastTap.current.time < 300) {
-          engine.performDash();
-          lastTap.current = null;
-        } else lastTap.current = { zone: 'move', time: now };
+        lastTap.current = { zone: 'move', time: now };
       }
     } else if (rightPointer.current === e.pointerId) {
       rightPointer.current = null;
       if (distance < 24 && elapsed < 260 && !state.repeatFired) {
         const now = performance.now();
-        if (lastTap.current?.zone === 'attack' && now - lastTap.current.time < 300) {
-          engine.performCelestialBeam();
-          lastTap.current = null;
-        } else lastTap.current = { zone: 'attack', time: now };
+        lastTap.current = { zone: 'attack', time: now };
       }
     }
     pointers.current.delete(e.pointerId);
@@ -124,7 +116,7 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
     if (pointers.current.size === 0) stopRepeater();
   };
 
-  // Long press on the left movement pad places/activates the recall beacon.
+  // Gesture repeat supports only the two retained abilities: flame attack and shield.
   const onPointerDownCapture = () => {
     if (repeatTimer.current !== null) window.clearInterval(repeatTimer.current);
     repeatTimer.current = window.setInterval(() => {
@@ -133,7 +125,7 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
       const state = id === null ? undefined : pointers.current.get(id);
       if (state && performance.now() - state.startedAt > 650 && !state.longPressFired) {
         state.longPressFired = true;
-        engine.performFantasticalRecall();
+        engine.performParryWard();
       }
       // Holding the right side repeats quick cuts while the left side can keep moving.
       const rightId = rightPointer.current;

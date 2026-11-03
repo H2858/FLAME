@@ -7,7 +7,8 @@ import React from 'react';
 import { Language, PlayerStats } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { DamageNumber, Enemy2D } from '../game/GameEngine2D';
-import { Flame, Sparkles, Pause, ShieldAlert, CircleHelp, Crosshair } from 'lucide-react';
+import { TouchControlsLayout } from '../types/game';
+import { Flame, Gem, Pause, ShieldAlert, CircleHelp, Shield } from 'lucide-react';
 
 interface HUDProps {
   lang: Language;
@@ -20,10 +21,13 @@ interface HUDProps {
   bossEnemy?: Enemy2D | null;
   damageNumbers: DamageNumber[];
   flightTime?: number;
+  stamina?: number;
   onPause: () => void;
   onHelp: () => void;
-  onBeam: () => void;
-  beamCooldown: number;
+  onFlame: () => void;
+  onWard: () => void;
+  wardCooldown: number;
+  controlsLayout: TouchControlsLayout;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -37,10 +41,13 @@ export const HUD: React.FC<HUDProps> = ({
   bossEnemy,
   damageNumbers,
   flightTime = 0,
+  stamina = 100,
   onPause,
   onHelp,
-  onBeam,
-  beamCooldown,
+  onFlame,
+  onWard,
+  wardCooldown,
+  controlsLayout,
 }) => {
   const t = TRANSLATIONS[lang];
   const hpPercent = Math.max(0, Math.min(100, (stats.hp / stats.maxHp) * 100));
@@ -87,6 +94,9 @@ export const HUD: React.FC<HUDProps> = ({
                 style={{ width: `${xpPercent}%` }}
               />
             </div>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-900" title="Stamina">
+              <div className="h-full bg-gradient-to-r from-emerald-500 to-lime-300 transition-all duration-150" style={{ width: `${Math.max(0, Math.min(100, stamina))}%` }} />
+            </div>
           </div>
         </div>
 
@@ -115,9 +125,9 @@ export const HUD: React.FC<HUDProps> = ({
 
         {/* Right: Stage, Souls & Pause */}
         <div className="flex items-center gap-2">
-          {/* Souls Currency Badge */}
+          {/* Gem currency badge */}
           <div className="flex items-center gap-1.5 bg-slate-950/80 border border-cyan-500/30 rounded-xl px-3 py-1.5 shadow-lg">
-            <Sparkles className="w-4 h-4 text-cyan-300" />
+            <Gem className="w-4 h-4 text-cyan-300" />
             <span className="font-mono font-bold text-sm text-cyan-200 tabular-nums">
               {stats.souls}
             </span>
@@ -142,15 +152,13 @@ export const HUD: React.FC<HUDProps> = ({
             <CircleHelp className="w-5 h-5" />
           </button>
 
-          {/* Visible destructive beam action */}
-          <button
-            onClick={onBeam}
-            disabled={beamCooldown > 0}
-            className="pointer-events-auto relative p-2.5 rounded-xl bg-emerald-950/90 border border-emerald-300/70 text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.35)] active:scale-90 disabled:opacity-60"
-            aria-label="Fire energy beam"
-          >
-            <Crosshair className="w-5 h-5" />
-            {beamCooldown > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-black px-1 text-[9px] font-bold text-emerald-200">{beamCooldown.toFixed(0)}</span>}
+          {/* Only two active abilities: Azure Flame and Protection Shield */}
+          <button onClick={onFlame} className="pointer-events-auto rounded-full bg-cyan-950/90 border border-cyan-300/80 text-cyan-200 shadow-[0_0_18px_rgba(6,182,212,0.35)] active:scale-90 flex items-center justify-center" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Azure Flame Attack">
+            <Flame className="w-6 h-6" />
+          </button>
+          <button onClick={onWard} disabled={wardCooldown > 0} className="pointer-events-auto relative rounded-full bg-emerald-950/90 border border-emerald-300/80 text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.35)] active:scale-90 disabled:opacity-60 flex items-center justify-center" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">
+            <Shield className="w-6 h-6" />
+            {wardCooldown > 0 && <span className="absolute -bottom-1 -right-1 rounded-full bg-black px-1 text-[9px] font-bold">{wardCooldown.toFixed(0)}</span>}
           </button>
 
           {/* Pause Button */}

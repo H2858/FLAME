@@ -195,7 +195,7 @@ export const TRANSLATIONS = {
     continueGame: 'Continue Journey',
     stageSelect: 'Stage Map (20 Levels)',
     settings: 'Settings',
-    upgradeShrine: 'Skill Shrine',
+    upgradeShrine: 'Gem Store',
     customizeControls: 'Customize Controls',
     cloudSave: 'Cloud Save',
     sound: 'Audio & Music',
@@ -215,7 +215,7 @@ export const TRANSLATIONS = {
     
     // HUD & Combat
     health: 'Ethereal Health',
-    souls: 'Flame Souls',
+    souls: 'Gems',
     combo: 'Combo',
     stage: 'Stage',
     wave: 'Wave',

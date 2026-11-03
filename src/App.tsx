@@ -14,7 +14,6 @@ import { PauseMenu } from './components/PauseMenu';
 import { StageSelectModal } from './components/StageSelectModal';
 import { UpgradeModal } from './components/UpgradeModal';
 import { SettingsModal } from './components/SettingsModal';
-import { ButtonCustomizerModal } from './components/ButtonCustomizerModal';
 import { GameOverVictoryModal } from './components/GameOverVictoryModal';
 import {
   CloudSaveData,
@@ -22,7 +21,6 @@ import {
   GameSettings,
   PlayerStats,
   SkillLevels,
-  TouchControlsLayout,
 } from './types/game';
 import { loadGameSave, saveGameData } from './utils/storage';
 import { soundManager } from './audio/soundManager';
@@ -34,7 +32,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showUpgrades, setShowUpgrades] = useState(false);
   const [showStageSelect, setShowStageSelect] = useState(false);
-  const [showCustomizer, setShowCustomizer] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
   // Keep the original responsive viewport behavior; do not rotate the DOM or force orientation.
@@ -51,6 +48,7 @@ export default function App() {
     critChance: 0.15,
     speed: 440,
     souls: saveData.playerStats.souls,
+    flightLevel: saveData.playerStats.flightLevel || 1,
     level: saveData.playerStats.level,
     xp: saveData.playerStats.xp,
     nextXp: 100 * Math.pow(1.5, saveData.playerStats.level - 1),
@@ -75,6 +73,7 @@ export default function App() {
     novaEnergy: 100,
     comboStreak: 0,
     flightTime: 0,
+    stamina: 100,
   });
 
   const [kills, setKills] = useState(0);
@@ -105,6 +104,7 @@ export default function App() {
           attackPower: s.attackPower,
           defense: s.defense,
           souls: s.souls,
+          flightLevel: s.flightLevel,
           level: s.level,
           xp: s.xp,
         },
@@ -143,7 +143,7 @@ export default function App() {
       engineRef.current = engine;
 
       engine.stats = { ...statsRef.current };
-      engine.skills = { ...skillsRef.current };
+      engine.skills = { ...skillsRef.current, fantasticalRecall: 1, celestialBeam: 1, orbitalWisps: 1, flameDash: 1, azureNova: 1, soulMagnet: 1 };
       engine.settings = { ...settingsRef.current };
 
       engine.onStatsUpdate = (newStats) => {
@@ -175,6 +175,10 @@ export default function App() {
       };
 
       engine.onVictory = () => {
+        const rewardedStats = { ...statsRef.current, souls: statsRef.current.souls + 100 };
+        statsRef.current = rewardedStats;
+        engine.stats = rewardedStats;
+        setStats(rewardedStats);
         const finishedStageId = stageIndexRef.current + 1;
         const currentCompleted = completedStagesRef.current;
         const nextUnlocked = Math.min(20, Math.max(unlockedStageRef.current, finishedStageId + 1));
@@ -184,7 +188,7 @@ export default function App() {
 
         setUnlockedStage(nextUnlocked);
         setCompletedStages(nextCompleted);
-        persistRef.current(undefined, undefined, undefined, nextUnlocked, nextCompleted);
+        persistRef.current(rewardedStats, undefined, undefined, nextUnlocked, nextCompleted);
         setGameState('victory');
       };
     },
@@ -216,16 +220,15 @@ export default function App() {
     if (stats.souls < cost) return;
 
     const newSouls = stats.souls - cost;
-    const newSkillLevels = {
-      ...skills,
-      [skillKey]: skills[skillKey] + 1,
-    };
-
+    const isFlightUpgrade = skillKey === 'flightDuration';
+    const newSkillLevels = { ...skills, [skillKey]: (skills[skillKey] || 1) + 1 };
     const newStats: PlayerStats = {
       ...stats,
       souls: newSouls,
-      maxHp: stats.maxHp + (skillKey === 'parryWard' ? 12 : 0),
-      attackPower: stats.attackPower + (skillKey === 'flameSlash' ? 5 : 0),
+      flightLevel: isFlightUpgrade ? stats.flightLevel + 1 : stats.flightLevel,
+      maxHp: stats.maxHp,
+      defense: stats.defense + (skillKey === 'parryWard' ? 1 : 0),
+      attackPower: stats.attackPower + (skillKey === 'flameSlash' ? 4 : 0),
     };
 
     setSkills(newSkillLevels);
@@ -247,52 +250,6 @@ export default function App() {
       engineRef.current.applyGraphicsQuality(newSettings.graphicsQuality);
     }
     persist(undefined, undefined, newSettings);
-  };
-
-  // Touch controls layout save
-  const handleSaveControls = (newLayout: TouchControlsLayout) => {
-    const updated = {
-      ...settings,
-      controlsLayout: newLayout,
-    };
-    setSettings(updated);
-    persist(undefined, undefined, updated);
-  };
-
-  // Cloud Save import
-  const handleImportSave = (data: CloudSaveData) => {
-    setSaveData(data);
-    setSkills(data.skillLevels);
-    setSettings(data.settings);
-    setUnlockedStage(data.unlockedStage || 1);
-    setCompletedStages(data.completedStages || []);
-
-    const importedStats: PlayerStats = {
-      ...stats,
-      maxHp: data.playerStats.maxHp,
-      hp: data.playerStats.maxHp,
-      attackPower: data.playerStats.attackPower,
-      defense: data.playerStats.defense,
-      souls: data.playerStats.souls,
-      level: data.playerStats.level,
-      xp: data.playerStats.xp,
-    };
-    setStats(importedStats);
-
-    if (engineRef.current) {
-      engineRef.current.stats = importedStats;
-      engineRef.current.skills = data.skillLevels;
-      engineRef.current.settings = data.settings;
-      engineRef.current.applyGraphicsQuality(data.settings.graphicsQuality);
-    }
-  };
-
-  // Language toggle
-  const toggleLanguage = () => {
-    const nextLang = settings.language === 'ar' ? 'en' : 'ar';
-    document.documentElement.setAttribute('dir', nextLang === 'ar' ? 'rtl' : 'ltr');
-    document.documentElement.setAttribute('lang', nextLang);
-    handleUpdateSettings({ ...settings, language: nextLang });
   };
 
   const t = TRANSLATIONS[settings.language];
@@ -345,10 +302,13 @@ export default function App() {
             bossEnemy={bossEnemy}
             damageNumbers={damageNumbers}
             flightTime={cooldowns.flightTime}
+            stamina={cooldowns.stamina}
             onPause={() => setGameState('paused')}
             onHelp={() => setShowTutorial(true)}
-            onBeam={() => engineRef.current?.performCelestialBeam()}
-            beamCooldown={cooldowns.beam}
+            onFlame={() => engineRef.current?.performAttack()}
+            onWard={() => engineRef.current?.performParryWard()}
+            wardCooldown={cooldowns.ward}
+            controlsLayout={settings.controlsLayout}
           />
 
           {/* Invisible gesture controls: drag to move, tap to slash, flick to jump/dash. */}
@@ -371,7 +331,7 @@ export default function App() {
             setShowStageSelect(true);
           }}
           onOpenSettings={() => setShowSettings(true)}
-          onOpenCustomizer={() => setShowCustomizer(true)}
+          onOpenStore={() => setShowUpgrades(true)}
           onMainMenu={() => {
             soundManager.stopAmbientMusic();
             setGameState('title');
@@ -452,26 +412,11 @@ export default function App() {
       {showSettings && (
         <SettingsModal
           settings={settings}
-          fullSaveData={saveData}
           onUpdateSettings={handleUpdateSettings}
-          onImportData={handleImportSave}
-          onOpenControlsCustomizer={() => {
-            setShowSettings(false);
-            setShowCustomizer(true);
-          }}
           onClose={() => setShowSettings(false)}
         />
       )}
 
-      {/* 10. Interactive Touch Buttons Customizer */}
-      {showCustomizer && (
-        <ButtonCustomizerModal
-          lang={settings.language}
-          layout={settings.controlsLayout}
-          onSave={handleSaveControls}
-          onClose={() => setShowCustomizer(false)}
-        />
-      )}
     </main>
   );
 }

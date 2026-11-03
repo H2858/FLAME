@@ -6,7 +6,7 @@
 import React from 'react';
 import { Language } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
-import { Play, RotateCcw, Sliders, Settings, Home, X, MapPin } from 'lucide-react';
+import { Play, RotateCcw, Settings, Home, X, MapPin, ShoppingBag } from 'lucide-react';
 
 interface PauseMenuProps {
   lang: Language;
@@ -14,7 +14,7 @@ interface PauseMenuProps {
   onRestart: () => void;
   onOpenStageSelect: () => void;
   onOpenSettings: () => void;
-  onOpenCustomizer: () => void;
+  onOpenStore: () => void;
   onMainMenu: () => void;
 }
 
@@ -24,7 +24,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   onRestart,
   onOpenStageSelect,
   onOpenSettings,
-  onOpenCustomizer,
+  onOpenStore,
   onMainMenu,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -74,12 +74,14 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
             <span>{t.stageSelect}</span>
           </button>
 
+
+
           <button
-            onClick={onOpenCustomizer}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-700 active:scale-95 transition-all"
+            onClick={onOpenStore}
+            className="w-full py-2.5 px-4 rounded-xl bg-cyan-950/50 hover:bg-cyan-900/60 text-cyan-200 font-bold text-xs flex items-center justify-center gap-2 border border-cyan-500/40 active:scale-95 transition-all"
           >
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <span>{t.customizeControls}</span>
+            <ShoppingBag className="w-4 h-4" />
+            <span>Gem Store</span>
           </button>
 
           <button

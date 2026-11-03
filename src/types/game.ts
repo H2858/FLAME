@@ -118,6 +118,7 @@ export interface CloudSaveData {
   };
   skillLevels: SkillLevels;
   unlockedStage: number; // 1 to 20
+  currentStageIndex?: number; // zero-based resume stage
   completedStages: number[];
   totalEnemiesSlain: number;
   settings: GameSettings;

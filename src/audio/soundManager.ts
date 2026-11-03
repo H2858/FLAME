@@ -524,6 +524,30 @@ class SoundManager {
   /**
    * Quick flame burst / ignite.
    */
+  /** Distant cinematic thunder roll for storm stages. */
+  public playThunder() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      const rumble = this.ctx.createOscillator();
+      const rumbleGain = this.ctx.createGain();
+      rumble.type = 'sine';
+      rumble.frequency.setValueAtTime(74, t);
+      rumble.frequency.exponentialRampToValueAtTime(34, t + 1.25);
+      rumbleGain.gain.setValueAtTime(0.0001, t);
+      rumbleGain.gain.linearRampToValueAtTime(0.16, t + 0.08);
+      rumbleGain.gain.exponentialRampToValueAtTime(0.001, t + 1.45);
+      rumble.connect(rumbleGain);
+      rumbleGain.connect(this.sfxGain);
+      rumble.start(t);
+      rumble.stop(t + 1.5);
+      this.playShapedNoise(0.85, 260, 0.12);
+    } catch {
+      // Audio is optional; visual lightning remains available if WebAudio is restricted.
+    }
+  }
+
   public playBlast() {
     this.init();
     if (!this.ctx || !this.sfxGain) return;

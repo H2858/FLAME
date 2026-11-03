@@ -74,9 +74,10 @@ export function loadGameSave(): CloudSaveData {
       const data = JSON.parse(raw);
       return {
         ...data,
-        unlockedStage: data.unlockedStage || 1,
+        unlockedStage: Math.max(1, Math.min(20, Number(data.unlockedStage) || 1)),
+        currentStageIndex: Math.max(0, Math.min(19, Number.isFinite(Number(data.currentStageIndex)) ? Number(data.currentStageIndex) : (Math.max(1, Math.min(20, Number(data.unlockedStage) || 1)) - 1))),
         playerStats: { ...data.playerStats, flightLevel: Math.max(1, data.playerStats?.flightLevel || 1) },
-        completedStages: data.completedStages || [],
+        completedStages: Array.isArray(data.completedStages) ? data.completedStages.filter((stage: unknown) => typeof stage === 'number' && Number.isInteger(stage) && stage >= 1 && stage <= 20) : [],
         skillLevels: {
           flameSlash: 1,
           fantasticalRecall: 1,
@@ -133,6 +134,7 @@ export function loadGameSave(): CloudSaveData {
       flightDuration: 1,
     },
     unlockedStage: 1,
+    currentStageIndex: 0,
     completedStages: [],
     totalEnemiesSlain: 0,
     settings: DEFAULT_SETTINGS,

@@ -60,7 +60,7 @@ export default function App() {
   // 20 Stages progress
   const [unlockedStage, setUnlockedStage] = useState<number>(saveData.unlockedStage || 1);
   const [completedStages, setCompletedStages] = useState<number[]>(saveData.completedStages || []);
-  const [stageIndex, setStageIndex] = useState(0);
+  const [stageIndex, setStageIndex] = useState(() => Math.max(0, Math.min(19, saveData.currentStageIndex ?? ((saveData.unlockedStage || 1) - 1))));
 
   // Combat status
   const [cooldowns, setCooldowns] = useState({
@@ -113,13 +113,14 @@ export default function App() {
         skillLevels: sk,
         unlockedStage: un,
         completedStages: comp,
+        currentStageIndex: Math.max(0, Math.min(19, Math.max(stageIndex, un - 1))),
         settings: st,
       };
 
       setSaveData(updated);
       saveGameData(updated);
     },
-    [saveData, stats, skills, settings, unlockedStage, completedStages]
+    [saveData, stats, skills, settings, unlockedStage, completedStages, stageIndex]
   );
 
   // Keep the engine's long-lived callbacks connected to the latest React state.
@@ -139,6 +140,21 @@ export default function App() {
   completedStagesRef.current = completedStages;
   persistRef.current = persist;
 
+  // Persist stage selection as soon as React commits the new stage index.
+  useEffect(() => {
+    persistRef.current();
+  }, [stageIndex]);
+
+  useEffect(() => {
+    const flushSave = () => persistRef.current();
+    window.addEventListener('pagehide', flushSave);
+    window.addEventListener('beforeunload', flushSave);
+    return () => {
+      window.removeEventListener('pagehide', flushSave);
+      window.removeEventListener('beforeunload', flushSave);
+    };
+  }, []);
+
   // Connect engine callbacks
   const handleEngineReady = useCallback(
     (engine: GameEngine2D) => {
@@ -147,6 +163,7 @@ export default function App() {
       engine.stats = { ...statsRef.current };
       engine.skills = { ...skillsRef.current, fantasticalRecall: 1, celestialBeam: 1, orbitalWisps: 1, flameDash: 1, azureNova: 1, soulMagnet: 1 };
       engine.settings = { ...settingsRef.current };
+      engine.setStage(stageIndexRef.current);
 
       engine.onStatsUpdate = (newStats) => {
         setStats({ ...newStats });

@@ -4,39 +4,23 @@
  */
 
 import React, { useEffect } from 'react';
-import { Language, PlayerStats } from '../types/game';
+import { Language } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { soundManager } from '../audio/soundManager';
-import { Play, Sparkles, Sliders, Settings, Globe, MapPin } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface TitleScreenProps {
   lang: Language;
-  stats: PlayerStats;
-  currentStage: number;
   onStartGame: () => void;
-  onOpenStageSelect: () => void;
-  onOpenUpgrades: () => void;
-  onOpenSettings: () => void;
-  onOpenCustomizer: () => void;
-  onToggleLanguage: () => void;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({
-  lang,
-  stats,
-  currentStage,
-  onStartGame,
-  onOpenStageSelect,
-  onOpenUpgrades,
-  onOpenSettings,
-  onOpenCustomizer,
-  onToggleLanguage,
-}) => {
+export const TitleScreen: React.FC<TitleScreenProps> = ({ lang, onStartGame }) => {
   const t = TRANSLATIONS[lang];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
         soundManager.init();
         onStartGame();
       }
@@ -46,47 +30,11 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   }, [onStartGame]);
 
   return (
-    <div
-      className="absolute inset-0 z-30 flex flex-col justify-between p-6 sm:p-10 pointer-events-none select-none"
-      dir={lang === 'ar' ? 'rtl' : 'ltr'}
-    >
-      {/* Top Bar Navigation */}
-      <div className="w-full flex items-center justify-between pointer-events-auto">
-        {/* Souls Counter Badge */}
-        <div className="flex items-center gap-2 bg-slate-950/80 border border-cyan-500/30 rounded-xl px-3.5 py-1.5 shadow-lg">
-          <Sparkles className="w-4 h-4 text-cyan-300" />
-          <span className="font-mono text-sm text-cyan-200 font-bold tabular-nums">
-            {stats.souls}
-          </span>
-          <span className="text-xs text-slate-400 font-medium">{t.souls}</span>
-        </div>
-
-        {/* Action icons */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={onToggleLanguage}
-            className="flex items-center gap-1.5 bg-slate-950/80 hover:bg-slate-800 border border-cyan-500/40 rounded-xl px-3 py-1.5 text-cyan-300 text-xs font-bold shadow-lg transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            <span>{lang === 'ar' ? 'English' : 'العربية'}</span>
-          </button>
-
-          <button
-            onClick={onOpenSettings}
-            className="p-2 bg-slate-950/80 hover:bg-slate-800 border border-cyan-500/40 rounded-xl text-cyan-300 shadow-lg transition-colors"
-            aria-label="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Center Hero Title Lockup */}
-      <div className="flex flex-col items-center justify-center my-auto text-center pointer-events-auto max-w-xl mx-auto">
-        {/* Bespoke Glowing Blue Flame Lockup */}
-        <div className="relative mb-3 flex items-center justify-center">
+    <div className="absolute inset-0 z-30 flex items-center justify-center p-6 pointer-events-none select-none">
+      <div className="flex flex-col items-center justify-center gap-8 pointer-events-auto">
+        <div className="relative flex items-center justify-center">
           <svg
-            className="w-24 h-24 sm:w-28 sm:h-28 text-cyan-400 drop-shadow-[0_0_35px_rgba(6,182,212,0.9)]"
+            className="w-32 h-32 sm:w-36 sm:h-36 text-cyan-400 drop-shadow-[0_0_35px_rgba(6,182,212,0.9)]"
             viewBox="0 0 100 100"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -116,67 +64,15 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             />
           </svg>
         </div>
-
-        {/* Title text */}
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] font-serif">
-          {t.gameTitle}
-        </h1>
-        <p className="text-sm sm:text-base font-medium text-cyan-300 mt-2 tracking-wide drop-shadow max-w-md">
-          {t.gameSubtitle}
-        </p>
-
-        {/* Stage Progress Pill */}
-        <div className="mt-4 bg-slate-950/80 border border-cyan-500/30 px-3.5 py-1 rounded-full text-xs font-mono text-cyan-300">
-          {t.stage} {currentStage} / 20
-        </div>
-
-        {/* CTA Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 mt-6 w-full max-w-sm">
-          <button
-            onClick={() => {
-              soundManager.init();
-              onStartGame();
-            }}
-            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base shadow-[0_0_30px_rgba(6,182,212,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2 border border-cyan-200/50"
-          >
-            <Play className="w-5 h-5 fill-white" />
-            <span>{t.startGame}</span>
-          </button>
-        </div>
-
-        {/* Secondary options row */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 mt-3 w-full max-w-sm">
-          <button
-            onClick={onOpenStageSelect}
-            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            <MapPin className="w-4 h-4 text-cyan-400" />
-            <span>{t.stageSelect}</span>
-          </button>
-
-          <button
-            onClick={onOpenUpgrades}
-            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span>{t.upgradeShrine}</span>
-          </button>
-
-          <button
-            onClick={onOpenCustomizer}
-            className="w-full py-2 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 text-slate-300 text-xs font-bold shadow-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <span>{t.customizeControls}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Flat Control Hint Line */}
-      <div className="w-full text-center pointer-events-none">
-        <p className="text-xs text-slate-400/90 font-mono tracking-wide bg-slate-950/70 inline-block px-4 py-1.5 rounded-full border border-slate-800">
-          {lang === 'ar' ? t.mobileHint : t.pcHint}
-        </p>
+        <button
+          type="button"
+          onClick={() => { soundManager.init(); onStartGame(); }}
+          className="min-w-[220px] py-4 px-9 rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-lg shadow-[0_0_34px_rgba(6,182,212,0.55)] active:scale-95 transition-transform flex items-center justify-center gap-3 border border-cyan-200/50"
+          aria-label={t.startGame}
+        >
+          <Play className="w-5 h-5 fill-white" />
+          <span>{t.startGame}</span>
+        </button>
       </div>
     </div>
   );

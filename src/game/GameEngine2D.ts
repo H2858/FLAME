@@ -129,6 +129,8 @@ export class GameEngine2D {
   private ctx: CanvasRenderingContext2D;
   private animFrameId = 0;
   private isRunning = true;
+  private isPaused = true;
+  private victoryTimer: ReturnType<typeof setTimeout> | null = null;
   private lastTime = 0;
 
   // Camera viewport & Cinematic Zoom
@@ -296,25 +298,25 @@ export class GameEngine2D {
   // 20 Progressive Stages
   // 20-stage journey in four escalating acts. Every fifth stage is a named boss gate.
   public stages: StageDefinition[] = [
-    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 8, enemyTypes: ['crimson_wisp'], bossType: 'crimson_wisp', isBossStage: true, difficultyScale: 1.0 },
-    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 10, enemyTypes: ['crimson_wisp', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: true, difficultyScale: 1.12 },
-    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 11, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 1.25 },
-    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 12, enemyTypes: ['crimson_wraith', 'magma_floater', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: true, difficultyScale: 1.38 },
+    { id: 1, nameKey: 'stage_1', descriptionKey: 'stage_1_desc', themeColor: '#0ea5e9', targetKills: 8, enemyTypes: ['crimson_wisp'], bossType: 'crimson_wisp', isBossStage: false, difficultyScale: 1.0 },
+    { id: 2, nameKey: 'stage_2', descriptionKey: 'stage_2_desc', themeColor: '#38bdf8', targetKills: 10, enemyTypes: ['crimson_wisp', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: false, difficultyScale: 1.12 },
+    { id: 3, nameKey: 'stage_3', descriptionKey: 'stage_3_desc', themeColor: '#818cf8', targetKills: 11, enemyTypes: ['crimson_wisp', 'crimson_wraith', 'magma_floater'], bossType: 'magma_floater', isBossStage: false, difficultyScale: 1.25 },
+    { id: 4, nameKey: 'stage_4', descriptionKey: 'stage_4_desc', themeColor: '#a855f7', targetKills: 12, enemyTypes: ['crimson_wraith', 'magma_floater', 'pyro_wolf'], bossType: 'pyro_wolf', isBossStage: false, difficultyScale: 1.38 },
     { id: 5, nameKey: 'stage_5', descriptionKey: 'stage_5_desc', themeColor: '#ef4444', targetKills: 14, enemyTypes: ['pyro_wolf', 'crimson_wraith', 'ignis_knight'], bossType: 'ignis_knight', isBossStage: true, difficultyScale: 1.52 },
-    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 14, enemyTypes: ['magma_floater', 'magma_golem', 'crimson_wisp'], bossType: 'crimson_wisp', isBossStage: true, difficultyScale: 1.66 },
-    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 15, enemyTypes: ['pyro_serpent', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 1.8 },
-    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 16, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 1.95 },
-    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 17, enemyTypes: ['ignis_knight', 'pyro_wolf', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 2.1 },
+    { id: 6, nameKey: 'stage_6', descriptionKey: 'stage_6_desc', themeColor: '#f97316', targetKills: 14, enemyTypes: ['magma_floater', 'magma_golem', 'crimson_wisp'], bossType: 'crimson_wisp', isBossStage: false, difficultyScale: 1.66 },
+    { id: 7, nameKey: 'stage_7', descriptionKey: 'stage_7_desc', themeColor: '#eab308', targetKills: 15, enemyTypes: ['pyro_serpent', 'magma_floater'], bossType: 'magma_floater', isBossStage: false, difficultyScale: 1.8 },
+    { id: 8, nameKey: 'stage_8', descriptionKey: 'stage_8_desc', themeColor: '#06b6d4', targetKills: 16, enemyTypes: ['pyro_serpent', 'crimson_wraith', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: false, difficultyScale: 1.95 },
+    { id: 9, nameKey: 'stage_9', descriptionKey: 'stage_9_desc', themeColor: '#6366f1', targetKills: 17, enemyTypes: ['ignis_knight', 'pyro_wolf', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: false, difficultyScale: 2.1 },
     { id: 10, nameKey: 'stage_10', descriptionKey: 'stage_10_desc', themeColor: '#dc2626', targetKills: 18, enemyTypes: ['ignis_knight', 'magma_golem', 'pyre_drake'], bossType: 'magma_golem', isBossStage: true, difficultyScale: 2.28 },
-    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 18, enemyTypes: ['pyre_drake', 'crimson_wisp', 'pyro_serpent'], bossType: 'pyro_serpent', isBossStage: true, difficultyScale: 2.42 },
-    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 19, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], bossType: 'crimson_wraith', isBossStage: true, difficultyScale: 2.58 },
-    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 20, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 2.74 },
-    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 21, enemyTypes: ['dark_pyromancer', 'ignis_knight', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 2.9 },
+    { id: 11, nameKey: 'stage_11', descriptionKey: 'stage_11_desc', themeColor: '#fb923c', targetKills: 18, enemyTypes: ['pyre_drake', 'crimson_wisp', 'pyro_serpent'], bossType: 'pyro_serpent', isBossStage: false, difficultyScale: 2.42 },
+    { id: 12, nameKey: 'stage_12', descriptionKey: 'stage_12_desc', themeColor: '#f43f5e', targetKills: 19, enemyTypes: ['pyre_drake', 'pyro_serpent', 'crimson_wraith'], bossType: 'crimson_wraith', isBossStage: false, difficultyScale: 2.58 },
+    { id: 13, nameKey: 'stage_13', descriptionKey: 'stage_13_desc', themeColor: '#ea580c', targetKills: 20, enemyTypes: ['magma_golem', 'magma_floater', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: false, difficultyScale: 2.74 },
+    { id: 14, nameKey: 'stage_14', descriptionKey: 'stage_14_desc', themeColor: '#9333ea', targetKills: 21, enemyTypes: ['dark_pyromancer', 'ignis_knight', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: false, difficultyScale: 2.9 },
     { id: 15, nameKey: 'stage_15', descriptionKey: 'stage_15_desc', themeColor: '#b91c1c', targetKills: 22, enemyTypes: ['pyro_serpent', 'dark_pyromancer', 'magma_golem'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.08 },
-    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 22, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.24 },
-    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 23, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: true, difficultyScale: 3.42 },
-    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 24, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], bossType: 'magma_floater', isBossStage: true, difficultyScale: 3.62 },
-    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 25, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: true, difficultyScale: 3.84 },
+    { id: 16, nameKey: 'stage_16', descriptionKey: 'stage_16_desc', themeColor: '#4f46e5', targetKills: 22, enemyTypes: ['ignis_knight', 'pyre_drake', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: false, difficultyScale: 3.24 },
+    { id: 17, nameKey: 'stage_17', descriptionKey: 'stage_17_desc', themeColor: '#7c3aed', targetKills: 23, enemyTypes: ['magma_golem', 'ignis_knight', 'dark_pyromancer'], bossType: 'dark_pyromancer', isBossStage: false, difficultyScale: 3.42 },
+    { id: 18, nameKey: 'stage_18', descriptionKey: 'stage_18_desc', themeColor: '#c026d3', targetKills: 24, enemyTypes: ['pyre_drake', 'dark_pyromancer', 'magma_floater'], bossType: 'magma_floater', isBossStage: false, difficultyScale: 3.62 },
+    { id: 19, nameKey: 'stage_19', descriptionKey: 'stage_19_desc', themeColor: '#e11d48', targetKills: 25, enemyTypes: ['ignis_knight', 'magma_golem', 'dark_pyromancer', 'pyre_drake'], bossType: 'pyre_drake', isBossStage: false, difficultyScale: 3.84 },
     { id: 20, nameKey: 'stage_20', descriptionKey: 'stage_20_desc', themeColor: '#7f1d1d', targetKills: 26, enemyTypes: ['ignis_knight', 'dark_pyromancer', 'pyre_drake'], bossType: 'abyssal_sovereign', isBossStage: true, difficultyScale: 4.1 },
   ];
 
@@ -335,6 +337,19 @@ export class GameEngine2D {
     this.lastTime = performance.now();
     this.tick = this.tick.bind(this);
     this.animFrameId = requestAnimationFrame(this.tick);
+  }
+
+  private get viewportWidth(): number {
+    return Math.max(1, this.canvas.clientWidth || this.canvas.getBoundingClientRect().width || 1);
+  }
+
+  private get viewportHeight(): number {
+    return Math.max(1, this.canvas.clientHeight || this.canvas.getBoundingClientRect().height || 1);
+  }
+
+  public setPaused(paused: boolean) {
+    this.isPaused = paused;
+    this.lastTime = performance.now();
   }
 
   private onResize = () => {
@@ -418,55 +433,35 @@ export class GameEngine2D {
     }
   }
 
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (this.isPaused) return;
+    this.keysPressed[e.code] = true;
+
+    if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space') {
+      e.preventDefault();
+      this.jump();
+    }
+    if (e.code === 'KeyJ') this.performAttack();
+    if (e.code === 'KeyK' || e.code === 'ShiftLeft') this.performDash();
+    if (e.code === 'KeyL') this.performFantasticalRecall();
+    if (e.code === 'KeyU') this.performCelestialBeam();
+    if (e.code === 'KeyI') this.performParryWard();
+    if (e.code === 'KeyO') this.performNova();
+  };
+
+  private handleKeyUp = (e: KeyboardEvent) => {
+    this.keysPressed[e.code] = false;
+  };
+
+  private handleWindowBlur = () => {
+    this.keysPressed = {};
+    this.moveInput = { x: 0, y: 0 };
+  };
+
   private setupKeyboardInput() {
-    window.addEventListener('keydown', (e) => {
-      this.keysPressed[e.code] = true;
-
-      // Jump
-      if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space') {
-        e.preventDefault();
-        this.jump();
-      }
-
-      // Attack
-      if (e.code === 'KeyJ') {
-        this.performAttack();
-      }
-
-      // Dash
-      if (e.code === 'KeyK' || e.code === 'ShiftLeft') {
-        this.performDash();
-      }
-
-      // Fantastical Recall
-      if (e.code === 'KeyL') {
-        this.performFantasticalRecall();
-      }
-
-      // Celestial Beam
-      if (e.code === 'KeyU') {
-        this.performCelestialBeam();
-      }
-
-      // Parry Ward
-      if (e.code === 'KeyI') {
-        this.performParryWard();
-      }
-
-      // Supernova
-      if (e.code === 'KeyO') {
-        this.performNova();
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      this.keysPressed[e.code] = false;
-    });
-
-    window.addEventListener('blur', () => {
-      this.keysPressed = {};
-      this.moveInput = { x: 0, y: 0 };
-    });
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.handleWindowBlur);
   }
 
   // ==========================================
@@ -1042,8 +1037,10 @@ export class GameEngine2D {
     const dt = Math.min(Math.max(rawDt, 0), 0.05);
 
     try {
-      if (this.hitstopTimer > 0) this.hitstopTimer -= dt;
-      else this.update(dt);
+      if (!this.isPaused) {
+        if (this.hitstopTimer > 0) this.hitstopTimer -= dt;
+        else this.update(dt);
+      }
     } catch (error) {
       // Keep the render loop alive on mobile WebViews instead of leaving the
       // opaque canvas at its default black when a gameplay update hits an error.
@@ -1062,8 +1059,8 @@ export class GameEngine2D {
 
   private renderEmergencyFrame() {
     const ctx = this.ctx;
-    const width = Math.max(1, this.canvas.clientWidth || window.innerWidth || 1);
-    const height = Math.max(1, this.canvas.clientHeight || window.innerHeight || 1);
+    const width = this.viewportWidth;
+    const height = this.viewportHeight;
     try {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1128,7 +1125,10 @@ export class GameEngine2D {
           });
         }
 
-        setTimeout(() => {
+        if (this.victoryTimer !== null) clearTimeout(this.victoryTimer);
+        this.victoryTimer = setTimeout(() => {
+          this.victoryTimer = null;
+          if (!this.isRunning || !this.isReunited) return;
           this.isStageComplete = true;
           if (this.onVictory) this.onVictory();
         }, 2400);
@@ -1341,8 +1341,8 @@ export class GameEngine2D {
     // 10. Camera Follow (Focused on center during reunion)
     const targetX = this.isReunited ? (this.x + this.familyAltarX) / 2 : this.x;
     const targetY = this.isReunited ? this.groundY - 50 : this.y;
-    const targetCamX = targetX - window.innerWidth / (2 * this.cameraZoom);
-    const targetCamY = targetY - window.innerHeight / (2 * this.cameraZoom) - 40;
+    const targetCamX = targetX - this.viewportWidth / (2 * this.cameraZoom);
+    const targetCamY = targetY - this.viewportHeight / (2 * this.cameraZoom) - 40;
     this.cameraX += (targetCamX - this.cameraX) * 7.5 * dt;
     this.cameraY += (targetCamY - this.cameraY) * 7.5 * dt;
 
@@ -1447,10 +1447,11 @@ export class GameEngine2D {
       this.meteorSpawnTimer = 2.2 + Math.random() * 3.0;
 
       // Spawn meteor at top / top-left of visible sky
-      const startX = this.cameraX - 200 + Math.random() * (window.innerWidth + 400);
+      const startX = -200 + Math.random() * (this.viewportWidth + 400);
       const startY = -40 + Math.random() * 90;
       const speed = 750 + Math.random() * 450;
       const angle = 0.55 + (Math.random() - 0.5) * 0.2; // ~32 degree diagonal descent
+      const life = 0.9 + Math.random() * 0.5;
 
       this.meteors.push({
         x: startX,
@@ -1460,8 +1461,8 @@ export class GameEngine2D {
         length: 120 + Math.random() * 110,
         thickness: 2.5 + Math.random() * 2,
         color: Math.random() < 0.6 ? '#ffffff' : '#38bdf8',
-        life: 0.9 + Math.random() * 0.5,
-        maxLife: 0.9 + Math.random() * 0.5,
+        life,
+        maxLife: life,
       });
 
       // Occasional celestial sound
@@ -1477,20 +1478,8 @@ export class GameEngine2D {
       m.x += m.vx * dt;
       m.y += m.vy * dt;
 
-      // Trailing stardust particles
-      if (Math.random() < 0.3) {
-        this.particles.push({
-          x: m.x - (m.vx / 800) * (m.length * 0.4),
-          y: m.y - (m.vy / 800) * (m.length * 0.4),
-          vx: (Math.random() - 0.5) * 20,
-          vy: (Math.random() - 0.5) * 20,
-          size: 1.5 + Math.random() * 2,
-          color: m.color,
-          alpha: 0.8,
-          life: 0.28,
-          maxLife: 0.28,
-        });
-      }
+      // Meteors are screen-space sky effects. Do not add their trail to the
+      // world-space particle list; that camera transform made detached rings.
 
       if (m.life <= 0) {
         this.meteors.splice(i, 1);
@@ -1598,8 +1587,8 @@ export class GameEngine2D {
 
   private render() {
     const ctx = this.ctx;
-    const width = Math.max(1, this.canvas.clientWidth || window.innerWidth || 1);
-    const height = Math.max(1, this.canvas.clientHeight || window.innerHeight || 1);
+    const width = this.viewportWidth;
+    const height = this.viewportHeight;
 
     let offsetX = -this.cameraX;
     let offsetY = -this.cameraY;
@@ -1668,11 +1657,12 @@ export class GameEngine2D {
     ctx.fillStyle = palette.ridge;
     for (let i = -3; i < 22; i++) {
       const px = i * 360 - this.cameraX * 0.06;
-      const py = height * 0.46;
+      const mountainBaseY = height * 0.80;
+      const mountainPeakY = height * 0.38;
       ctx.beginPath();
-      ctx.moveTo(px, py + 350);
-      ctx.lineTo(px + 180, py);
-      ctx.lineTo(px + 360, py + 350);
+      ctx.moveTo(px, mountainBaseY);
+      ctx.lineTo(px + 180, mountainPeakY);
+      ctx.lineTo(px + 360, mountainBaseY);
       ctx.fill();
     }
     ctx.restore();
@@ -1896,7 +1886,7 @@ export class GameEngine2D {
     if (this.crowSpawnTimer <= 0) {
       const direction: 1 | -1 = Math.random() > 0.5 ? 1 : -1;
       this.crows.push({
-        x: direction === 1 ? -55 : window.innerWidth + 55,
+        x: direction === 1 ? -55 : this.viewportWidth + 55,
         y: 75 + Math.random() * 145,
         speed: 72 + Math.random() * 58,
         scale: 0.55 + Math.random() * 0.65,
@@ -1911,7 +1901,7 @@ export class GameEngine2D {
       crow.phase += dt * (8 + crow.speed * 0.025);
       crow.y += Math.sin(crow.phase * 0.22) * 2.2 * dt;
     }
-    this.crows = this.crows.filter(c => c.direction === 1 ? c.x < window.innerWidth + 90 : c.x > -90);
+    this.crows = this.crows.filter(c => c.direction === 1 ? c.x < this.viewportWidth + 90 : c.x > -90);
   }
 
   /** Elegant near-black raven silhouettes with articulated, flapping wings. */
@@ -2953,6 +2943,10 @@ export class GameEngine2D {
   // ==========================================
 
   public setStage(stageIndex: number) {
+    if (this.victoryTimer !== null) {
+      clearTimeout(this.victoryTimer);
+      this.victoryTimer = null;
+    }
     this.currentStageIndex = Math.max(0, Math.min(this.stages.length - 1, stageIndex));
     const stage = this.stages[this.currentStageIndex];
 
@@ -2965,10 +2959,36 @@ export class GameEngine2D {
     this.targetCameraZoom = 1.0;
     this.flightDuration = 0;
     this.isHorizontalFlightActive = false;
+    this.reunionTimer = 0;
+    this.spawnTimer = 0;
+    this.meteorSpawnTimer = 1.8;
+    this.recallCooldown = 0;
+    this.beamCooldown = 0;
+    this.beamTimer = 0;
+    this.isBeaming = false;
+    this.parryCooldown = 0;
+    this.parryTimer = 0;
+    this.isParrying = false;
+    this.dashCooldown = 0;
+    this.dashTimer = 0;
+    this.isDashing = false;
+    this.novaCooldown = 0;
+    this.novaEnergy = 100;
+    this.isSlashing = false;
+    this.slashStep = 0;
+    this.activeSlashStep = 0;
+    this.slashTimer = 0;
+    this.comboStreak = 0;
+    this.comboResetTimer = 0;
+    this.screenShakeAmount = 0;
+    this.hitstopTimer = 0;
+    this.moveInput = { x: 0, y: 0 };
+    this.keysPressed = {};
 
     this.enemies = [];
     this.projectiles = [];
     this.soulMotes = [];
+    this.particles = [];
     this.meteors = [];
     this.recallBeacon = null;
     this.slashCooldownTimer = 0;
@@ -2978,6 +2998,10 @@ export class GameEngine2D {
 
     this.x = 200;
     this.y = this.terrainHeightAt(this.x) - this.height / 2;
+    // Start the camera centered on the hero immediately; do not reveal an
+    // empty sky while the camera slowly catches up on short landscape screens.
+    this.cameraX = this.x - this.viewportWidth / 2;
+    this.cameraY = this.y - this.viewportHeight / 2 - 40;
     this.vx = 0;
     this.vy = 0;
     this.stats.hp = this.stats.maxHp;
@@ -2994,7 +3018,14 @@ export class GameEngine2D {
 
   public dispose() {
     this.isRunning = false;
+    if (this.victoryTimer !== null) {
+      clearTimeout(this.victoryTimer);
+      this.victoryTimer = null;
+    }
     cancelAnimationFrame(this.animFrameId);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.handleWindowBlur);
   }
 }

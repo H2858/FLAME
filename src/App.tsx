@@ -120,18 +120,35 @@ export default function App() {
     [saveData, stats, skills, settings, unlockedStage, completedStages]
   );
 
+  // Keep the engine's long-lived callbacks connected to the latest React state.
+  // GameCanvas creates the engine once, so callbacks must not capture first-render values.
+  const statsRef = useRef(stats);
+  const skillsRef = useRef(skills);
+  const settingsRef = useRef(settings);
+  const stageIndexRef = useRef(stageIndex);
+  const unlockedStageRef = useRef(unlockedStage);
+  const completedStagesRef = useRef(completedStages);
+  const persistRef = useRef(persist);
+  statsRef.current = stats;
+  skillsRef.current = skills;
+  settingsRef.current = settings;
+  stageIndexRef.current = stageIndex;
+  unlockedStageRef.current = unlockedStage;
+  completedStagesRef.current = completedStages;
+  persistRef.current = persist;
+
   // Connect engine callbacks
   const handleEngineReady = useCallback(
     (engine: GameEngine2D) => {
       engineRef.current = engine;
 
-      engine.stats = { ...stats };
-      engine.skills = { ...skills };
-      engine.settings = { ...settings };
+      engine.stats = { ...statsRef.current };
+      engine.skills = { ...skillsRef.current };
+      engine.settings = { ...settingsRef.current };
 
       engine.onStatsUpdate = (newStats) => {
         setStats({ ...newStats });
-        persist(newStats);
+        persistRef.current(newStats);
       };
 
       engine.onCooldownsUpdate = (cds) => {
@@ -158,20 +175,26 @@ export default function App() {
       };
 
       engine.onVictory = () => {
-        const finishedStageId = stageIndex + 1;
-        const nextUnlocked = Math.min(20, Math.max(unlockedStage, finishedStageId + 1));
-        const nextCompleted = completedStages.includes(finishedStageId)
-          ? completedStages
-          : [...completedStages, finishedStageId];
+        const finishedStageId = stageIndexRef.current + 1;
+        const currentCompleted = completedStagesRef.current;
+        const nextUnlocked = Math.min(20, Math.max(unlockedStageRef.current, finishedStageId + 1));
+        const nextCompleted = currentCompleted.includes(finishedStageId)
+          ? currentCompleted
+          : [...currentCompleted, finishedStageId];
 
         setUnlockedStage(nextUnlocked);
         setCompletedStages(nextCompleted);
-        persist(undefined, undefined, undefined, nextUnlocked, nextCompleted);
+        persistRef.current(undefined, undefined, undefined, nextUnlocked, nextCompleted);
         setGameState('victory');
       };
     },
-    [stats, skills, settings, stageIndex, unlockedStage, completedStages, persist]
+    []
   );
+
+  // The simulation must only advance while the gameplay screen is active.
+  useEffect(() => {
+    engineRef.current?.setPaused(gameState !== 'playing');
+  }, [gameState]);
 
   // Keyboard Escape listener for Pause
   useEffect(() => {
@@ -304,14 +327,7 @@ export default function App() {
       {gameState === 'title' && (
         <TitleScreen
           lang={settings.language}
-          stats={stats}
-          currentStage={stageIndex + 1}
           onStartGame={beginGame}
-          onOpenStageSelect={() => setShowStageSelect(true)}
-          onOpenUpgrades={() => setShowUpgrades(true)}
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenCustomizer={() => setShowCustomizer(true)}
-          onToggleLanguage={toggleLanguage}
         />
       )}
 

@@ -307,15 +307,15 @@ export default function App() {
             onPause={() => setGameState('paused')}
             onHelp={() => setShowTutorial(true)}
             onFlame={() => engineRef.current?.activateAzureFlame()}
+            onSword={() => engineRef.current?.performAttack('horizontal')}
             onWard={() => engineRef.current?.performParryWard()}
             wardCooldown={cooldowns.ward}
             flameCooldown={engineRef.current?.azureFlameCooldown || 0}
-            flameTime={cooldowns.flameTime}
             wardTime={cooldowns.wardTime}
             controlsLayout={settings.controlsLayout}
           />
 
-          {/* Invisible gesture controls: drag to move, tap to slash, flick to jump/dash. */}
+          {/* Movement gestures only; sword combat uses the dedicated visible HUD button. */}
           {!showTutorial && <TouchGestureControls engine={engineRef.current} />}
           {showTutorial && <TouchTutorialModal lang={settings.language} onClose={closeTutorial} />}
         </>

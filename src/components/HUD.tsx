@@ -8,7 +8,7 @@ import { Language, PlayerStats } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { DamageNumber, Enemy2D } from '../game/GameEngine2D';
 import { TouchControlsLayout } from '../types/game';
-import { Flame, Gem, Pause, ShieldAlert, CircleHelp, Shield } from 'lucide-react';
+import { Flame, Gem, Pause, ShieldAlert, CircleHelp, Shield, Sword } from 'lucide-react';
 
 interface HUDProps {
   lang: Language;
@@ -24,10 +24,10 @@ interface HUDProps {
   onPause: () => void;
   onHelp: () => void;
   onFlame: () => void;
+  onSword: () => void;
   onWard: () => void;
   wardCooldown: number;
   flameCooldown: number;
-  flameTime: number;
   wardTime: number;
   controlsLayout: TouchControlsLayout;
 }
@@ -46,10 +46,10 @@ export const HUD: React.FC<HUDProps> = ({
   onPause,
   onHelp,
   onFlame,
+  onSword,
   onWard,
   wardCooldown,
   flameCooldown,
-  flameTime,
   wardTime,
   controlsLayout,
 }) => {
@@ -140,7 +140,7 @@ export const HUD: React.FC<HUDProps> = ({
           {/* Stage Progress Pill */}
           <div className="hidden sm:flex flex-col bg-slate-950/80 border border-slate-700/60 rounded-xl px-3 py-1 text-right">
             <span className="text-[10px] text-slate-400 font-medium">
-              {t.stage} {stageIndex + 1}: {stageName}
+              {t.stage} {stageIndex + 1}: {stageName.replace(/^Stage\s+\d+\s*:\s*/i, '')}
             </span>
             <span className="text-xs font-mono font-bold text-cyan-300 tabular-nums">
               {kills} / {targetKills}
@@ -199,15 +199,18 @@ export const HUD: React.FC<HUDProps> = ({
         ))}
       </div>
 
-      {/* Ability controls live at the bottom edge, clear of the top status HUD. */}
+      {/* Dedicated touch combat controls: flame shot, sword strike, protective ward. */}
       <div className="pointer-events-none absolute bottom-7 right-4 sm:right-8 flex items-end gap-3">
-        <button onClick={onFlame} disabled={flameCooldown > 0 && flameTime <= 0} className="pointer-events-auto relative rounded-full border border-cyan-200/80 bg-slate-950/75 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.28)] backdrop-blur-md active:scale-90 disabled:opacity-55 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Azure Flame">
+        <button onClick={onFlame} disabled={flameCooldown > 0} className="pointer-events-auto relative rounded-full border border-cyan-200/80 bg-slate-950/80 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.30)] backdrop-blur-md active:scale-90 disabled:opacity-45 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Shoot Azure Flame">
           <Flame className="w-7 h-7" />
-          {flameTime > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full border border-cyan-200/60 bg-slate-950 px-1.5 text-[10px] font-bold text-cyan-100">{flameTime.toFixed(0)}s</span> : flameCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{flameCooldown.toFixed(0)}</span> : null}
+          {flameCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{flameCooldown.toFixed(1)}s</span> : null}
         </button>
-        <button onClick={onWard} disabled={wardCooldown > 0 && wardTime <= 0} className="pointer-events-auto relative rounded-full border border-emerald-200/80 bg-slate-950/75 text-emerald-100 shadow-[0_0_24px_rgba(110,231,183,0.25)] backdrop-blur-md active:scale-90 disabled:opacity-55 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">
+        <button onClick={onSword} className="pointer-events-auto relative rounded-full border border-sky-200/80 bg-slate-950/80 text-sky-100 shadow-[0_0_24px_rgba(56,189,248,0.30)] backdrop-blur-md active:scale-90 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Sword attack">
+          <Sword className="w-7 h-7" />
+        </button>
+        <button onClick={onWard} disabled={wardCooldown > 0 || wardTime > 0} className="pointer-events-auto relative rounded-full border border-emerald-200/80 bg-slate-950/80 text-emerald-100 shadow-[0_0_24px_rgba(110,231,183,0.25)] backdrop-blur-md active:scale-90 disabled:opacity-45 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">
           <Shield className="w-7 h-7" />
-          {wardTime > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full border border-emerald-200/60 bg-slate-950 px-1.5 text-[10px] font-bold text-emerald-100">{wardTime.toFixed(0)}s</span> : wardCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{wardCooldown.toFixed(0)}</span> : null}
+          {wardTime > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full border border-emerald-200/60 bg-slate-950 px-1.5 text-[10px] font-bold text-emerald-100">{wardTime.toFixed(1)}s</span> : wardCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{wardCooldown.toFixed(1)}s</span> : null}
         </button>
       </div>
     </div>

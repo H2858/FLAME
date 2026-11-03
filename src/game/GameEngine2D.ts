@@ -150,6 +150,7 @@ export class GameEngine2D {
   public isGrounded = false;
   public facing: 1 | -1 = 1;
   public flameTimer = 0;
+  private stageSceneTimer = 0;
 
   // TOKEN-ACTIVATED FLIGHT MODE (two-axis player-controlled flight)
   public flightDuration = 0;
@@ -709,15 +710,30 @@ export class GameEngine2D {
     }
   }
 
+  /** Fires a directed azure plasma bolt; the shield remains a separate defensive skill. */
   public activateAzureFlame() {
-    if (this.azureFlameCooldown > 0 || this.azureFlameTimer > 0 || this.stats.hp <= 0 || this.isReunited) return;
-    this.azureFlameTimer = 5;
-    this.azureFlameCooldown = 7;
-    soundManager.playCelestialBeam();
-    // A short, clean ignition burst; the aura itself is rendered around the hero.
-    for (let i = 0; i < 18; i++) {
-      const a = (Math.PI * 2 * i) / 18;
-      this.particles.push({ x: this.x, y: this.y, vx: Math.cos(a) * (65 + Math.random() * 55), vy: Math.sin(a) * (65 + Math.random() * 55), size: 3 + Math.random() * 4, color: i % 3 ? '#22d3ee' : '#ffffff', alpha: 0.9, life: 0.42, maxLife: 0.42 });
+    if (this.azureFlameCooldown > 0 || this.stats.hp <= 0 || this.isReunited) return;
+    this.azureFlameCooldown = 0.62;
+    const direction = this.facing || 1;
+    const originX = this.x + direction * 30;
+    const originY = this.y - 8;
+    this.projectiles.push({
+      id: this.nextEntityId++,
+      x: originX, y: originY,
+      vx: direction * 640, vy: this.isHorizontalFlightActive ? this.moveInput.y * 120 : 0,
+      radius: 13, damage: Math.max(18, Math.round(this.stats.attackPower * 1.65)),
+      life: 1.35, color: '#38e8ff',
+    });
+    soundManager.playBlast();
+    for (let i = 0; i < 7; i++) {
+      this.particles.push({
+        x: originX, y: originY,
+        vx: direction * (35 + Math.random() * 125),
+        vy: (Math.random() - 0.5) * 90,
+        size: 2 + Math.random() * 4,
+        color: i % 3 ? '#22d3ee' : '#ffffff',
+        alpha: 0.95, life: 0.28, maxLife: 0.28, shape: 'spark',
+      });
     }
   }
 
@@ -1131,6 +1147,7 @@ export class GameEngine2D {
 
   private update(dt: number) {
     this.flameTimer += dt;
+    this.stageSceneTimer += dt;
 
     // 1. Update Low Misty Eyes & Celestial Meteors
     this.updateLowEyes(dt);
@@ -1423,7 +1440,22 @@ export class GameEngine2D {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      if (p.isEnemy) {
+      if (!p.isEnemy) {
+        let hit = false;
+        for (const enemy of this.enemies) {
+          if (enemy.state === 'dead') continue;
+          if (Math.hypot(p.x - enemy.x, p.y - (enemy.y - enemy.height * 0.42)) < p.radius + Math.max(18, enemy.width * 0.34)) {
+            this.damageEnemy(enemy, p.damage, false, true);
+            hit = true;
+            for (let spark = 0; spark < 9; spark++) {
+              const angle = Math.random() * Math.PI * 2;
+              this.particles.push({ x: p.x, y: p.y, vx: Math.cos(angle) * (45 + Math.random() * 110), vy: Math.sin(angle) * (45 + Math.random() * 110), size: 2 + Math.random() * 4, color: spark % 2 ? '#67e8f9' : '#ffffff', alpha: 0.95, life: 0.32, maxLife: 0.32, shape: 'spark' });
+            }
+            break;
+          }
+        }
+        if (hit) { this.projectiles.splice(i, 1); continue; }
+      } else {
         if (Math.hypot(p.x - this.x, p.y - this.y) < p.radius + 22) {
           if (false && this.skills.orbitalWisps > 1 && this.orbitalWispCooldown <= 0) {
             this.orbitalWispCooldown = Math.max(1.8, 6.2 - (this.skills.orbitalWisps - 1) * 0.65);
@@ -1798,25 +1830,57 @@ export class GameEngine2D {
     shade.addColorStop(0, 'rgba(2,8,20,.02)'); shade.addColorStop(.68, 'rgba(2,8,20,.02)'); shade.addColorStop(1, 'rgba(2,8,20,.42)');
     ctx.fillStyle = shade; ctx.fillRect(moonX-moonR, moonY-moonR, moonR*2, moonR*2); ctx.restore();
 
-    // Aurora Borealis appears on selected chapters (4, 9, 14, 19).
+    // Cinematic aurora curtains on selected chapters (4, 9, 14, 19).
     if ([3, 8, 13, 18].includes(this.currentStageIndex)) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      for (let band = 0; band < 4; band++) {
-        const phase = this.flameTimer * (0.22 + band * 0.035) + band * 1.7;
-        const gradient = ctx.createLinearGradient(0, 35 + band * 22, 0, height * 0.58);
-        gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(0.35, band % 2 ? 'rgba(45,212,191,0.00)' : 'rgba(34,211,238,0.00)');
-        gradient.addColorStop(0.68, band % 2 ? 'rgba(45,212,191,0.13)' : 'rgba(139,92,246,0.12)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      const auroraPhase = this.flameTimer * 0.34 + this.currentStageIndex * 0.7;
+      // Broad translucent curtains with drifting folds, layered color and a soft luminous crown.
+      for (let curtain = 0; curtain < 7; curtain++) {
+        const x0 = -width * 0.18 + curtain * width * 0.205;
+        const sway = Math.sin(auroraPhase + curtain * 0.83) * width * 0.045;
+        const top = height * (0.095 + (curtain % 3) * 0.025);
+        const bottom = height * (0.47 + (curtain % 2) * 0.045);
+        const hue = curtain % 3 === 0 ? [65, 245, 190] : curtain % 3 === 1 ? [75, 190, 255] : [165, 115, 255];
+        const gradient = ctx.createLinearGradient(x0, top, x0 + sway, bottom);
+        gradient.addColorStop(0, `rgba(${hue[0]},${hue[1]},${hue[2]},0)`);
+        gradient.addColorStop(0.18, `rgba(${hue[0]},${hue[1]},${hue[2]},0.025)`);
+        gradient.addColorStop(0.52, `rgba(${hue[0]},${hue[1]},${hue[2]},0.15)`);
+        gradient.addColorStop(0.82, `rgba(${hue[0]},${hue[1]},${hue[2]},0.055)`);
+        gradient.addColorStop(1, `rgba(${hue[0]},${hue[1]},${hue[2]},0)`);
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(-30, 90 + band * 14);
-        for (let x = 0; x <= width + 30; x += 24) {
-          const waveY = 125 + band * 23 + Math.sin(x * 0.006 + phase) * (28 + band * 4) + Math.sin(x * 0.014 - phase) * 9;
-          ctx.lineTo(x, waveY);
+        ctx.moveTo(x0 - 80, top);
+        for (let y = top; y <= bottom; y += 18) {
+          const t = (y - top) / Math.max(1, bottom - top);
+          const fold = Math.sin(y * 0.012 + auroraPhase * 1.5 + curtain) * (18 + 28 * t)
+            + Math.sin(y * 0.026 - auroraPhase + curtain * 0.7) * 9;
+          ctx.lineTo(x0 + sway * t + fold - 80, y);
         }
-        ctx.lineTo(width + 30, height * 0.58); ctx.lineTo(-30, height * 0.58); ctx.closePath(); ctx.fill();
+        ctx.lineTo(x0 + sway + 100, bottom);
+        for (let y = bottom; y >= top; y -= 18) {
+          const t = (y - top) / Math.max(1, bottom - top);
+          const fold = Math.sin(y * 0.012 + auroraPhase * 1.5 + curtain) * (18 + 28 * t)
+            + Math.sin(y * 0.026 - auroraPhase + curtain * 0.7) * 9;
+          ctx.lineTo(x0 + sway * t + fold + 100, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Fine luminous wave crests give the curtains a silk-like, flowing edge.
+      for (let ribbon = 0; ribbon < 3; ribbon++) {
+        ctx.beginPath();
+        for (let x = -40; x <= width + 40; x += 12) {
+          const y = height * (0.20 + ribbon * 0.055)
+            + Math.sin(x * 0.004 + auroraPhase * (1 + ribbon * 0.12)) * (20 + ribbon * 8)
+            + Math.sin(x * 0.011 - auroraPhase * 0.8) * 9;
+          if (x === -40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = ribbon === 0 ? 'rgba(184,255,236,0.20)' : ribbon === 1 ? 'rgba(126,220,255,0.13)' : 'rgba(206,168,255,0.10)';
+        ctx.lineWidth = ribbon === 0 ? 2.2 : 1.4;
+        ctx.shadowColor = ribbon === 0 ? '#a7fff0' : '#7dd3fc';
+        ctx.shadowBlur = 20;
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -2044,12 +2108,29 @@ export class GameEngine2D {
     for (const p of this.projectiles) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.fillStyle = p.color;
+      const angle = Math.atan2(p.vy, p.vx);
+      ctx.rotate(angle);
       ctx.shadowColor = p.color;
-      ctx.shadowBlur = 18;
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.shadowBlur = p.isEnemy ? 16 : 24;
+      if (!p.isEnemy) {
+        const flame = ctx.createLinearGradient(-p.radius * 2.8, 0, p.radius * 1.5, 0);
+        flame.addColorStop(0, 'rgba(34,211,238,0)');
+        flame.addColorStop(0.28, 'rgba(34,211,238,0.62)');
+        flame.addColorStop(0.72, '#22d3ee');
+        flame.addColorStop(1, '#ffffff');
+        ctx.fillStyle = flame;
+        ctx.beginPath();
+        ctx.moveTo(-p.radius * 3.2, 0);
+        ctx.quadraticCurveTo(-p.radius, -p.radius * 0.95, p.radius * 1.35, -p.radius * 0.32);
+        ctx.quadraticCurveTo(p.radius * 2.0, 0, p.radius * 1.35, p.radius * 0.32);
+        ctx.quadraticCurveTo(-p.radius, p.radius * 0.95, -p.radius * 3.2, 0);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.beginPath(); ctx.ellipse(p.radius * 0.7, 0, p.radius * 0.78, p.radius * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -2137,10 +2218,13 @@ export class GameEngine2D {
       ctx.fillStyle = (col + row) % 3 === 0 ? 'rgba(255,190,112,0.95)' : 'rgba(255,211,145,0.72)';
       ctx.shadowColor = '#ffb45f'; ctx.shadowBlur = 12;
       ctx.fillRect(wx, wy, 10, 21); ctx.shadowBlur = 0;
-      const walk = Math.sin(this.flameTimer * 2.4 + col * 1.7 + row) * 3;
-      ctx.fillStyle = 'rgba(25,18,27,0.82)';
-      ctx.beginPath(); ctx.arc(wx + 5 + walk, wy + 8, 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(wx + 3 + walk, wy + 10, 4, 8);
+      const crossing = (this.stageSceneTimer - 0.55 - col * 0.16 - row * 0.24) / 1.8;
+      if (crossing >= 0 && crossing <= 1) {
+        const walk = -7 + crossing * 24;
+        ctx.fillStyle = 'rgba(25,18,27,0.82)';
+        ctx.beginPath(); ctx.arc(wx + 5 + walk, wy + 8, 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(wx + 3 + walk, wy + 10, 4, 8);
+      }
     }
     ctx.strokeStyle = paletteAccent; ctx.globalAlpha = 0.24; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-210, 79); ctx.lineTo(210, 79); ctx.stroke();
@@ -3066,6 +3150,49 @@ export class GameEngine2D {
 
     ctx.restore(); // restore the shared body transform before elite detailing
 
+    // Individually readable creature detailing: luminous chest cores, bevel highlights and armor seams.
+    ctx.save();
+    ctx.scale(enemy.facing, 1);
+    const detailCoreY = -enemy.height * 0.39;
+    const coreTint = enemy.type === 'dark_pyromancer' ? '#d8a7ff'
+      : enemy.type === 'magma_golem' || enemy.type === 'pyro_serpent' ? '#ffb35c'
+      : enemy.type === 'abyssal_sovereign' ? '#ff667e' : '#75eaff';
+    const corePulse = 0.88 + (Math.sin(enemy.animTimer * 5.2) + 1) * 0.10;
+    const coreGlow = ctx.createRadialGradient(0, detailCoreY, 1, 0, detailCoreY, enemy.isBoss ? 23 : 13);
+    coreGlow.addColorStop(0, 'rgba(255,255,255,0.95)');
+    coreGlow.addColorStop(0.22, coreTint);
+    coreGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath(); ctx.arc(0, detailCoreY, (enemy.isBoss ? 23 : 13) * corePulse, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = coreTint; ctx.globalAlpha = 0.5; ctx.lineWidth = enemy.isBoss ? 2.2 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-enemy.width * 0.22, -enemy.height * 0.18);
+    ctx.lineTo(-enemy.width * 0.12, detailCoreY);
+    ctx.lineTo(0, -enemy.height * 0.18);
+    ctx.lineTo(enemy.width * 0.12, detailCoreY);
+    ctx.lineTo(enemy.width * 0.22, -enemy.height * 0.18);
+    ctx.stroke();
+    if (enemy.isBoss) {
+      // Layered shoulder plates and segmented chest armor make boss silhouettes distinct at a glance.
+      ctx.globalAlpha = 0.78; ctx.lineWidth = 2.4;
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = 'rgba(8,15,31,0.72)';
+        ctx.beginPath();
+        ctx.moveTo(side * enemy.width * 0.16, -enemy.height * 0.40);
+        ctx.lineTo(side * enemy.width * 0.43, -enemy.height * 0.48);
+        ctx.lineTo(side * enemy.width * 0.38, -enemy.height * 0.27);
+        ctx.lineTo(side * enemy.width * 0.17, -enemy.height * 0.22);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = coreTint; ctx.beginPath();
+        ctx.moveTo(side * enemy.width * 0.22, -enemy.height * 0.38);
+        ctx.lineTo(side * enemy.width * 0.36, -enemy.height * 0.31); ctx.stroke();
+      }
+    } else {
+      ctx.globalAlpha = 0.55; ctx.strokeStyle = coreTint; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, detailCoreY, 7 * corePulse, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+
     // High-contrast elite/boss silhouette details: crown horns, layered armor and pulsing core.
     if (enemy.isBoss) {
       const pulse = 0.85 + (Math.sin(enemy.animTimer * 4) + 1) * 0.12;
@@ -3266,6 +3393,7 @@ export class GameEngine2D {
       this.victoryTimer = null;
     }
     this.currentStageIndex = Math.max(0, Math.min(this.stages.length - 1, stageIndex));
+    this.stageSceneTimer = 0;
     const stage = this.stages[this.currentStageIndex];
 
     this.enemiesKilledInStage = 0;

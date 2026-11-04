@@ -157,7 +157,7 @@ export class GameEngine2D {
   // TOKEN-ACTIVATED FLIGHT MODE (two-axis player-controlled flight)
   public flightDuration = 0;
   public stamina = 100;
-  public readonly maxStamina = 100;
+  public maxStamina = 100;
   public isHorizontalFlightActive = false;
   private flightRamCooldown = 0;
 
@@ -169,7 +169,7 @@ export class GameEngine2D {
     // Desert routes follow broad dune crests; other biomes retain a restrained natural roll.
     const desert = [2, 6, 12, 17].includes(this.currentStageIndex);
     if (desert) {
-      return this.groundY + Math.sin(worldX * 0.00105 + 0.6) * 13 + Math.sin(worldX * 0.00235 + 1.8) * 4.2;
+      return this.groundY + Math.sin(worldX * 0.00072 + 0.6) * 34 + Math.sin(worldX * 0.00155 + 1.8) * 13 + Math.sin(worldX * 0.0031) * 4;
     }
     return this.groundY + Math.sin(worldX * 0.0017) * 2.4 + Math.sin(worldX * 0.0041 + 1.2) * 1.15;
   }
@@ -314,7 +314,7 @@ export class GameEngine2D {
     parryWard: 1,
     azureNova: 1,
     soulMagnet: 1,
-    flightDuration: 1,
+    flightDuration: 1, staminaCapacity: 1, wardDuration: 1, maxHealth: 1, defense: 1, attackPower: 1,
   };
 
   // 20 Progressive Stages
@@ -512,7 +512,7 @@ export class GameEngine2D {
           vx: (Math.random() - 0.5) * 120,
           vy: 60 + Math.random() * 80,
           size: 4 + Math.random() * 4,
-          color: '#38bdf8',
+          color: this.flameSkin === 'solar' ? '#fb923c' : '#38bdf8',
           alpha: 0.95,
           life: 0.35,
           maxLife: 0.35,
@@ -587,7 +587,7 @@ export class GameEngine2D {
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         size: 4 + Math.random() * 4,
-        color: isHeavy ? '#00f0ff' : '#7dd3fc',
+        color: this.flameSkin === 'solar' ? (isHeavy ? '#ff8a24' : '#ffc078') : (isHeavy ? '#00f0ff' : '#7dd3fc'),
         alpha: 0.95,
         life: 0.24,
         maxLife: 0.24,
@@ -615,7 +615,7 @@ export class GameEngine2D {
         vx: -this.facing * (120 + Math.random() * 220),
         vy: (Math.random() - 0.5) * 80,
         size: 7 + Math.random() * 7,
-        color: '#00f0ff',
+        color: this.flameSkin === 'solar' ? '#f97316' : '#00f0ff',
         alpha: 0.9,
         life: 0.38,
         maxLife: 0.38,
@@ -647,7 +647,7 @@ export class GameEngine2D {
           vx: Math.cos(ang) * 200,
           vy: Math.sin(ang) * 200,
           size: 5 + Math.random() * 6,
-          color: '#38bdf8',
+          color: this.flameSkin === 'solar' ? '#fb923c' : '#38bdf8',
           alpha: 1,
           life: 0.45,
           maxLife: 0.45,
@@ -696,7 +696,7 @@ export class GameEngine2D {
           vx: (Math.random() - 0.5) * 90,
           vy: (Math.random() - 0.5) * 90,
           size: 8 + Math.random() * 9,
-          color: '#00f0ff',
+          color: this.flameSkin === 'solar' ? '#f97316' : '#00f0ff',
           alpha: 1,
           life: 0.5,
           maxLife: 0.5,
@@ -741,7 +741,7 @@ export class GameEngine2D {
       x: originX, y: originY, previousX: originX, previousY: originY,
       vx: direction * 760, vy: this.isHorizontalFlightActive ? this.moveInput.y * 120 : 0,
       radius: 18, damage: Math.max(22, Math.round(this.stats.attackPower * 1.85)),
-      life: 1.35, color: '#38e8ff',
+      life: 1.35, color: this.flameSkin === 'solar' ? '#ff9b35' : '#38e8ff',
     });
     soundManager.playBlast();
     for (let i = 0; i < 7; i++) {
@@ -750,7 +750,7 @@ export class GameEngine2D {
         vx: direction * (35 + Math.random() * 125),
         vy: (Math.random() - 0.5) * 90,
         size: 2 + Math.random() * 4,
-        color: i % 3 ? '#22d3ee' : '#ffffff',
+        color: i % 3 ? (this.flameSkin === 'solar' ? '#fb923c' : '#22d3ee') : '#ffffff',
         alpha: 0.95, life: 0.28, maxLife: 0.28, shape: 'spark',
       });
     }
@@ -760,7 +760,7 @@ export class GameEngine2D {
     if (this.parryCooldown > 0 || this.isParrying || this.stats.hp <= 0 || this.isReunited || this.stamina < 25) return;
     this.stamina = Math.max(0, this.stamina - 25);
     this.isParrying = true;
-    this.parryTimer = 5;
+    this.parryTimer = 5 + Math.max(0, this.skills.wardDuration - 1) * 1.25;
     this.parryCooldown = 6;
     soundManager.playBlast();
   }
@@ -797,7 +797,7 @@ export class GameEngine2D {
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd,
         size: 7 + Math.random() * 8,
-        color: '#00f0ff',
+        color: this.flameSkin === 'solar' ? '#f97316' : '#00f0ff',
         alpha: 1,
         life: 0.65,
         maxLife: 0.65,
@@ -822,7 +822,7 @@ export class GameEngine2D {
         x: screenX,
         y: screenY,
         opacity: 1,
-        color: isCrit ? '#f59e0b' : '#38bdf8',
+        color: isCrit ? '#f59e0b' : (this.flameSkin === 'solar' ? '#fb923c' : '#38bdf8'),
         isCrit,
       });
     }
@@ -852,7 +852,7 @@ export class GameEngine2D {
     soundManager.playEnemyDeath();
 
     const soulBonus = 1;
-    const soulValue = Math.round((enemy.isBoss ? 150 : enemy.type === 'magma_golem' ? 45 : 12) * soulBonus);
+    const soulValue = Math.round((enemy.isBoss ? 38 : enemy.type === 'magma_golem' ? 9 : 3) * soulBonus);
 
     this.soulMotes.push({
       id: Math.random(),
@@ -890,7 +890,7 @@ export class GameEngine2D {
       this.isBattleCleared = true;
 
       // Reveal the family altar at the end of the road!
-      this.familyAltarX = this.x + 1650;
+      this.familyAltarX = this.currentStageIndex === 4 ? 4775 : this.x + 1650;
       soundManager.playFamilyArrival();
 
       // All active enemies vaporize into cinders
@@ -984,9 +984,9 @@ export class GameEngine2D {
 
     this.spawnTimer -= dt;
 
-    const maxAlive = stage.isBossStage ? 6 : 7;
+    const maxAlive = stage.isBossStage ? 5 : 6;
     if (this.spawnTimer <= 0 && aliveEnemies.length < maxAlive) {
-      this.spawnTimer = Math.max(1.5, 3.2 - this.currentStageIndex * 0.08);
+      this.spawnTimer = Math.max(1.05, 3.0 - this.currentStageIndex * 0.095);
       this.spawnRandomEnemy(stage);
     }
   }
@@ -1001,41 +1001,41 @@ export class GameEngine2D {
     const diff = stage.difficultyScale;
     let width = 50;
     let height = 50;
-    let hp = Math.round(40 * diff);
-    let attackPower = Math.round(12 * diff);
+    let hp = Math.round(58 * diff);
+    let attackPower = Math.round(23 * diff);
     let speed = 200;
     let attackRange = 75;
 
     switch (type) {
       case 'crimson_wisp':
-        width = 44; height = 44; hp = Math.round(35 * diff); speed = 250; attackRange = 60;
+        width = 44; height = 44; hp = Math.round(48 * diff); speed = 250; attackRange = 60;
         break;
       case 'pyro_wolf':
-        width = 65; height = 45; hp = Math.round(55 * diff); speed = 240; attackRange = 90;
+        width = 65; height = 45; hp = Math.round(76 * diff); speed = 240; attackRange = 90;
         break;
       case 'crimson_wraith':
-        width = 52; height = 70; hp = Math.round(45 * diff); speed = 180; attackRange = 400;
+        width = 52; height = 70; hp = Math.round(68 * diff); speed = 180; attackRange = 400;
         break;
       case 'magma_golem':
-        width = 95; height = 105; hp = Math.round(160 * diff); speed = 120; attackRange = 120; attackPower = Math.round(24 * diff);
+        width = 95; height = 105; hp = Math.round(205 * diff); speed = 120; attackRange = 120; attackPower = Math.round(24 * diff);
         break;
       case 'pyro_serpent':
-        width = 80; height = 55; hp = Math.round(65 * diff); speed = 190; attackRange = 360;
+        width = 80; height = 55; hp = Math.round(88 * diff); speed = 190; attackRange = 360;
         break;
       case 'ignis_knight':
-        width = 60; height = 80; hp = Math.round(85 * diff); speed = 190; attackRange = 95; attackPower = Math.round(18 * diff);
+        width = 60; height = 80; hp = Math.round(112 * diff); speed = 190; attackRange = 95; attackPower = Math.round(18 * diff);
         break;
       case 'magma_floater':
         width = 48; height = 48; hp = Math.round(40 * diff); speed = 160; attackRange = 300;
         break;
       case 'pyre_drake':
-        width = 75; height = 65; hp = Math.round(70 * diff); speed = 230; attackRange = 140;
+        width = 75; height = 65; hp = Math.round(96 * diff); speed = 230; attackRange = 140;
         break;
       case 'dark_pyromancer':
-        width = 55; height = 80; hp = Math.round(80 * diff); speed = 160; attackRange = 450; attackPower = Math.round(22 * diff);
+        width = 55; height = 80; hp = Math.round(110 * diff); speed = 160; attackRange = 450; attackPower = Math.round(22 * diff);
         break;
       case 'abyssal_sovereign':
-        width = 140; height = 160; hp = Math.round(800 * diff); speed = 170; attackRange = 160; attackPower = Math.round(36 * diff);
+        width = 140; height = 160; hp = Math.round(1050 * diff); speed = 170; attackRange = 160; attackPower = Math.round(36 * diff);
         break;
     }
 
@@ -1055,7 +1055,7 @@ export class GameEngine2D {
       facing: side === 1 ? -1 : 1,
       state: 'chase',
       windupTimer: 0,
-      attackCooldown: 1.5,
+      attackCooldown: Math.max(0.72, 1.45 - this.currentStageIndex * 0.025),
       attackRange,
       animTimer: 0,
       flashTimer: 0,
@@ -1073,14 +1073,14 @@ export class GameEngine2D {
     let height = 140;
     // Every stage now has a boss, so its stats scale steadily instead of using
     // the old occasional-boss values that would overwhelm early-stage players.
-    let hp = Math.round(260 * diff);
-    let attackPower = Math.round(17 * diff);
+    let hp = Math.round(430 * diff);
+    let attackPower = Math.round(23 * diff);
 
     if (bossType === 'abyssal_sovereign') {
       width = 160;
       height = 180;
-      hp = Math.round(520 * diff);
-      attackPower = Math.round(25 * diff);
+      hp = Math.round(780 * diff);
+      attackPower = Math.round(34 * diff);
     }
 
     this.enemies.push({
@@ -1099,7 +1099,7 @@ export class GameEngine2D {
       facing: -1,
       state: 'chase',
       windupTimer: 0,
-      attackCooldown: 2.0,
+      attackCooldown: Math.max(0.95, 1.85 - this.currentStageIndex * 0.035),
       attackRange: 160,
       animTimer: 0,
       flashTimer: 0,
@@ -1174,7 +1174,8 @@ export class GameEngine2D {
     this.updateLowEyes(dt);
     this.updateMeteors(dt);
     this.updateCrows(dt);
-    this.stamina = Math.min(this.maxStamina, this.stamina + dt * 2.5);
+    this.maxStamina = 100 + Math.max(0, this.skills.staminaCapacity - 1) * 18;
+    this.stamina = Math.min(this.maxStamina, this.stamina + dt * (2.5 + Math.max(0, this.skills.staminaCapacity - 1) * 0.22));
     this.updateWorldTokens(dt);
 
     // 2. Family Reunion Check & CINEMATIC ZOOM
@@ -1341,7 +1342,7 @@ export class GameEngine2D {
         vx: -this.vx * 0.15 + (Math.random() - 0.5) * 45,
         vy: -75 - Math.random() * 95,
         size: 3 + Math.random() * 5,
-        color: Math.random() < 0.6 ? '#00f0ff' : '#38bdf8',
+        color: this.flameSkin === 'solar' ? (Math.random() < 0.6 ? '#f97316' : '#fbbf24') : (Math.random() < 0.6 ? '#00f0ff' : '#38bdf8'),
         alpha: 0.9,
         life: 0.35,
         maxLife: 0.35,
@@ -1981,6 +1982,7 @@ export class GameEngine2D {
       ctx.translate(-width / 2, -height / 2);
     }
     ctx.translate(offsetX, offsetY);
+    if (this.currentStageIndex === 4) this.renderRomanRockTunnel(ctx);
 
     // 4. LOW MISTY PREDATOR EYES (Lowered near ground, NOT in the sky!)
     if (!isDesertBiome) this.renderLowMistyEyes(ctx);
@@ -2033,7 +2035,8 @@ export class GameEngine2D {
       ctx.save();
       for (let i = 0; i < 110; i++) {
         const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
-        const gy = this.groundY + 18 + ((i * 31) % 230);
+        const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
+        const gy = this.terrainHeightAt(wx) + 18 + ((i * 31) % 150);
         ctx.fillStyle = i % 3 ? 'rgba(255,224,164,0.20)' : 'rgba(72,43,23,0.22)';
         ctx.fillRect(wx, gy, 2 + (i % 2), 1.2);
       }
@@ -2092,7 +2095,7 @@ export class GameEngine2D {
       }
       for (let petal = 0; petal < 18; petal++) {
         const px = groundLeft + ((petal * 173 + this.flameTimer * (13 + petal % 4 * 4)) % Math.max(1, groundWidth));
-        const py = this.groundY - 70 - ((petal * 37 + this.flameTimer * 9) % 150);
+        const py = this.terrainHeightAt(px) - 70 - ((petal * 37 + this.flameTimer * 9) % 115);
         ctx.save(); ctx.translate(px, py); ctx.rotate(this.flameTimer * .7 + petal);
         ctx.fillStyle = 'rgba(255,190,224,0.72)'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       }
@@ -2186,9 +2189,9 @@ export class GameEngine2D {
       ctx.shadowBlur = p.isEnemy ? 16 : 24;
       if (!p.isEnemy) {
         const flame = ctx.createLinearGradient(-p.radius * 2.8, 0, p.radius * 1.5, 0);
-        flame.addColorStop(0, 'rgba(34,211,238,0)');
-        flame.addColorStop(0.28, 'rgba(34,211,238,0.62)');
-        flame.addColorStop(0.72, '#22d3ee');
+        flame.addColorStop(0, this.flameSkin === 'solar' ? 'rgba(249,115,22,0)' : 'rgba(34,211,238,0)');
+        flame.addColorStop(0.28, this.flameSkin === 'solar' ? 'rgba(249,115,22,0.62)' : 'rgba(34,211,238,0.62)');
+        flame.addColorStop(0.72, this.flameSkin === 'solar' ? '#f97316' : '#22d3ee');
         flame.addColorStop(1, '#ffffff');
         ctx.fillStyle = flame;
         ctx.beginPath();
@@ -2197,7 +2200,7 @@ export class GameEngine2D {
         ctx.quadraticCurveTo(p.radius * 2.0, 0, p.radius * 1.35, p.radius * 0.32);
         ctx.quadraticCurveTo(-p.radius, p.radius * 0.95, -p.radius * 3.2, 0);
         ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillStyle = this.flameSkin === 'solar' ? 'rgba(255,241,214,0.98)' : 'rgba(255,255,255,0.95)';
         ctx.beginPath(); ctx.ellipse(p.radius * 0.7, 0, p.radius * 0.78, p.radius * 0.22, 0, 0, Math.PI * 2); ctx.fill();
       } else {
         ctx.fillStyle = p.color;
@@ -2273,18 +2276,30 @@ export class GameEngine2D {
         g.addColorStop(0, layer === 0 ? '#263d50' : '#1a2c3a');
         g.addColorStop(0.55, layer === 0 ? '#172c3a' : '#101f2a'); g.addColorStop(1, '#080f19');
         ctx.fillStyle = g; ctx.fill();
-        // Cedar clusters sit on the slope and follow its contour.
-        if (layer < 2) for (let t = 0; t < 11; t++) {
-          const tx = x + 55 + t * (w - 100) / 10;
-          const ridge = peak + 18 + Math.pow((tx - (x + w * 0.4)) / (w * 0.58), 2) * (base - peak) * 0.70;
-          const th = 22 + ((i * 13 + t * 17 + layer * 9) % 26);
-          const tw = th * 0.42;
-          ctx.fillStyle = layer === 0 ? '#0d251f' : '#091a19';
-          ctx.beginPath(); ctx.moveTo(tx, ridge - th); ctx.quadraticCurveTo(tx - tw * 0.12, ridge - th * 0.55, tx - tw, ridge - th * 0.42);
-          ctx.quadraticCurveTo(tx - tw * 0.28, ridge - th * 0.34, tx - tw * 0.82, ridge - th * 0.08);
-          ctx.lineTo(tx + tw * 0.82, ridge - th * 0.08); ctx.quadraticCurveTo(tx + tw * 0.28, ridge - th * 0.34, tx + tw, ridge - th * 0.42);
-          ctx.quadraticCurveTo(tx + tw * 0.12, ridge - th * 0.55, tx, ridge - th); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#171d20'; ctx.fillRect(tx - 1.2, ridge - th * 0.12, 2.4, th * 0.25);
+        // Compact cedar silhouettes are sampled directly from the same Bezier
+        // curves as the mountain edge. Their trunks terminate exactly on rock;
+        // clipping prevents even a single tree from floating above the ridge.
+        if (layer < 2) {
+          ctx.save();
+          ctx.beginPath(); ctx.moveTo(x - 80, base);
+          ctx.bezierCurveTo(x + 30, base - 48, x + 75, peak + 110, x + w * 0.40, peak + 8);
+          ctx.bezierCurveTo(x + w * 0.52, peak - 16, x + w * 0.62, peak + 76, x + w + 80, base);
+          ctx.closePath(); ctx.clip();
+          const bezier = (a:number,b:number,c:number,d:number,t:number) => Math.pow(1-t,3)*a + 3*Math.pow(1-t,2)*t*b + 3*(1-t)*t*t*c + t*t*t*d;
+          const treeCount = layer === 0 ? 26 : 21;
+          for (let t = 0; t < treeCount; t++) {
+            const u = 0.10 + t / (treeCount - 1) * 0.80;
+            const second = u > 0.5;
+            const q = second ? (u - 0.5) * 2 : u * 2;
+            const p0x = second ? x+w*.40 : x-80, p1x = second ? x+w*.52 : x+30, p2x = second ? x+w*.62 : x+75, p3x = second ? x+w+80 : x+w*.40;
+            const p0y = second ? peak+8 : base, p1y = second ? peak-16 : base-48, p2y = second ? peak+76 : peak+110, p3y = second ? base : peak+8;
+            const tx = bezier(p0x,p1x,p2x,p3x,q), ridge = bezier(p0y,p1y,p2y,p3y,q);
+            const th = 12 + ((i*11+t*7+layer*5)%13); const tw = th*.34;
+            ctx.fillStyle = layer === 0 ? '#0a211d' : '#071713';
+            ctx.beginPath(); ctx.moveTo(tx,ridge-th); ctx.lineTo(tx-tw*.58,ridge-th*.48); ctx.lineTo(tx-tw,ridge-th*.08); ctx.lineTo(tx+tw,ridge-th*.08); ctx.lineTo(tx+tw*.58,ridge-th*.48); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(63,105,79,.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tx,ridge-th*.72); ctx.lineTo(tx,ridge-1); ctx.stroke();
+          }
+          ctx.restore();
         }
       }
     }
@@ -3082,8 +3097,9 @@ export class GameEngine2D {
       ctx.lineWidth = 2.5;
       ctx.shadowColor = '#fb7185'; ctx.shadowBlur = 22;
       ctx.beginPath(); ctx.ellipse(0, enemy.height * 0.37, enemy.width * 0.72 * pulse, 18 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
-      for (let i = 0; i < 4; i++) {
-        const a = enemy.animTimer * 0.8 + i * Math.PI / 2;
+      ctx.strokeStyle = 'rgba(255,190,120,.72)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, -enemy.height*.12, enemy.width*.43, enemy.height*.30, Math.sin(enemy.animTimer*.7)*.08, 0, Math.PI*2); ctx.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = enemy.animTimer * 0.8 + i * Math.PI / 3;
         const ox = Math.cos(a) * enemy.width * 0.72;
         const oy = -enemy.height * 0.18 + Math.sin(a) * 18;
         ctx.fillStyle = i % 2 ? '#fbbf24' : '#fb7185';
@@ -3297,37 +3313,38 @@ export class GameEngine2D {
       }
 
       case 'ignis_knight': {
-        ctx.scale(1.3, 1.3);
-
-        ctx.fillStyle = isFlashing ? '#ffffff' : '#0f172a';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 20;
-        ctx.beginPath();
-        ctx.moveTo(-18, -26);
-        ctx.lineTo(18, -26);
-        ctx.lineTo(14, 24);
-        ctx.lineTo(-14, 24);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#1e293b';
-        ctx.beginPath();
-        ctx.arc(0, -32, 14, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = isWindup ? '#ffffff' : '#ef4444';
-        ctx.fillRect(-6, -34, 16, 3.5);
-
-        ctx.save();
-        ctx.translate(22, -10);
-        ctx.rotate(isWindup ? -1.1 : Math.sin(enemy.animTimer * 5) * 0.2);
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(0, -38, 5, 55);
-        ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 18;
-        ctx.fillRect(-2, -38, 9, 36);
-        ctx.restore();
+        const legionScale = enemy.isBoss ? 1.62 : 1.28;
+        ctx.scale(legionScale, legionScale);
+        const metal = isFlashing ? '#ffffff' : '#a97845';
+        const bronze = isFlashing ? '#ffffff' : '#d7ad6b';
+        const cloth = enemy.isBoss ? '#5b1725' : '#6f2630';
+        const stride = enemy.state === 'chase' ? Math.sin(enemy.animTimer * 11) * 5 : 0;
+        // Heavy oval scutum with raised bronze rim and central boss.
+        ctx.save(); ctx.translate(-27, -2 + stride * .25); ctx.rotate(-.10);
+        ctx.fillStyle = '#71313a'; ctx.strokeStyle = bronze; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(0, 0, 12, 29, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,220,160,.72)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(0,24); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.stroke();
+        ctx.fillStyle = '#e5c17c'; ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+        // Lorica segmentata cuirass, layered shoulder plates and leather pteruges.
+        ctx.fillStyle = metal; ctx.strokeStyle = '#4c3428'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-17,-28); ctx.quadraticCurveTo(0,-36,17,-28); ctx.lineTo(14,18); ctx.quadraticCurveTo(0,27,-14,18); ctx.closePath(); ctx.fill(); ctx.stroke();
+        for(let row=0;row<5;row++){ctx.strokeStyle='rgba(75,44,29,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-14,-20+row*8);ctx.quadraticCurveTo(0,-17+row*8,14,-20+row*8);ctx.stroke();}
+        ctx.fillStyle=bronze; ctx.beginPath();ctx.ellipse(-15,-24,8,6,-.35,0,Math.PI*2);ctx.ellipse(15,-24,8,6,.35,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=cloth; for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(-13+k*5,17);ctx.lineTo(-12+k*5,30+stride);ctx.lineTo(-9+k*5,30+stride);ctx.lineTo(-8+k*5,18);ctx.closePath();ctx.fill();}
+        // Galea helmet with cheek guards and a flowing crimson horsehair crest.
+        ctx.fillStyle='#8f633d';ctx.strokeStyle=bronze;ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(0,-35,14,Math.PI,Math.PI*2);ctx.lineTo(13,-27);ctx.lineTo(-13,-27);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#a97845';ctx.beginPath();ctx.moveTo(-13,-34);ctx.lineTo(-19,-20);ctx.lineTo(-12,-17);ctx.lineTo(-7,-29);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(13,-34);ctx.lineTo(19,-20);ctx.lineTo(12,-17);ctx.lineTo(7,-29);ctx.closePath();ctx.fill();
+        ctx.fillStyle=cloth;ctx.beginPath();ctx.moveTo(-3,-47);ctx.quadraticCurveTo(0,-62,7,-57);ctx.quadraticCurveTo(16,-48,5,-29);ctx.quadraticCurveTo(2,-39,-3,-47);ctx.fill();
+        ctx.fillStyle=isWindup?'#fff':'#ffcc75';ctx.fillRect(-7,-36,5,2.5);ctx.fillRect(3,-36,5,2.5);
+        // Animated gladius thrust: blade, bronze guard and leather grip.
+        ctx.save();ctx.translate(21,-9+stride*.35);ctx.rotate(isWindup?-1.25:Math.sin(enemy.animTimer*5)*.16);
+        ctx.fillStyle='#dce4e8';ctx.strokeStyle='#7f8b91';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(-2,-43);ctx.lineTo(3,-51);ctx.lineTo(7,-43);ctx.lineTo(5,4);ctx.lineTo(-1,4);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle=bronze;ctx.fillRect(-5,4,13,4);ctx.fillStyle='#593a2c';ctx.fillRect(-1,8,5,13);ctx.restore();
+        // Boss officers carry a segmented shoulder mantle and animated crown crest.
+        if(enemy.isBoss){ctx.strokeStyle='#f4d08a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-27,22,Math.PI*1.08,Math.PI*1.92);ctx.stroke();ctx.fillStyle='#e6b85e';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(-8+i*8,-61-Math.sin(enemy.animTimer*4+i)*2,2.5,0,Math.PI*2);ctx.fill();}}
         break;
       }
 
@@ -3594,6 +3611,44 @@ export class GameEngine2D {
     ctx.restore();
   }
 
+  /** Algiers' hidden catacomb: a torch-lit Roman tunnel beneath the rocky city. */
+  private renderRomanRockTunnel(ctx: CanvasRenderingContext2D) {
+    const left = 1180, right = 4900, top = this.groundY - 330;
+    ctx.save();
+    const cave = ctx.createLinearGradient(0, top, 0, this.groundY + 20);
+    cave.addColorStop(0, '#111820'); cave.addColorStop(.55, '#080d13'); cave.addColorStop(1, '#020407');
+    ctx.fillStyle = cave; ctx.beginPath(); ctx.moveTo(left,this.groundY+5); ctx.lineTo(left,top+110);
+    ctx.quadraticCurveTo(left+40,top-25,left+180,top); ctx.lineTo(right-180,top);
+    ctx.quadraticCurveTo(right-40,top-25,right,this.groundY+5); ctx.closePath(); ctx.fill();
+    // A broken stair descends from the city street into the underground passage.
+    ctx.fillStyle='#353d43'; ctx.beginPath(); ctx.moveTo(left-110,this.groundY-2); ctx.lineTo(left+8,this.groundY-2); ctx.lineTo(left+8,this.groundY-118); ctx.closePath(); ctx.fill();
+    for(let step=0;step<8;step++){const sx=left-102+step*14, sy=this.groundY-12-step*14;ctx.fillStyle=step%2?'#626a70':'#454e55';ctx.fillRect(sx,sy,17,8);ctx.strokeStyle='rgba(205,215,220,.22)';ctx.strokeRect(sx,sy,17,8);}
+    // Rough stone courses and fractured vault ribs.
+    ctx.strokeStyle='rgba(132,151,165,.20)';ctx.lineWidth=3;
+    for(let x=left+70;x<right;x+=230){ctx.beginPath();ctx.moveTo(x,this.groundY);ctx.quadraticCurveTo(x-28,top+100,x+35,top+8);ctx.stroke();}
+    ctx.strokeStyle='rgba(165,178,187,.12)';ctx.lineWidth=1;
+    for(let y=top+48;y<this.groundY-15;y+=52){ctx.beginPath();ctx.moveTo(left+35,y);ctx.lineTo(right-35,y+((Math.floor(y)%3)*3));ctx.stroke();}
+    // Repeating Roman pillars, worn capitals and torch brackets.
+    for(let x=left+210;x<right-100;x+=520){
+      ctx.fillStyle='#252e35';ctx.fillRect(x-18,top+75,36,this.groundY-top-75);
+      ctx.fillStyle='#48515a';ctx.fillRect(x-29,top+67,58,13);ctx.fillRect(x-24,this.groundY-18,48,18);
+      ctx.fillStyle='#6b4930';ctx.fillRect(x+34,top+130,7,34);
+      const glow=ctx.createRadialGradient(x+37,top+126,2,x+37,top+126,105);glow.addColorStop(0,'rgba(255,164,73,.34)');glow.addColorStop(1,'rgba(255,115,35,0)');ctx.fillStyle=glow;ctx.fillRect(x-70,top+30,215,210);
+      ctx.fillStyle='#ffb45c';ctx.beginPath();ctx.moveTo(x+37,top+126);ctx.quadraticCurveTo(x+20,top+111,x+38,top+91);ctx.quadraticCurveTo(x+55,top+111,x+37,top+126);ctx.fill();
+    }
+    // Distant prison gate at the far end, with a lock that opens during reunion.
+    const gx=right-125, gy=this.groundY-170;
+    ctx.fillStyle='#171d23';ctx.fillRect(gx-48,gy-18,96,178);
+    ctx.strokeStyle='#8b9298';ctx.lineWidth=5;ctx.strokeRect(gx-42,gy-12,84,170);
+    for(let bar=-3;bar<=3;bar++){ctx.beginPath();ctx.moveTo(gx+bar*12,gy-8);ctx.lineTo(gx+bar*12,gy+155);ctx.stroke();}
+    ctx.strokeStyle=this.isBattleCleared?'#e8bd6c':'#7b4a32';ctx.lineWidth=4;ctx.beginPath();ctx.arc(gx+27,gy+74,8,0,Math.PI*2);ctx.stroke();
+    // Flame illumination follows the player and makes the vault readable only nearby.
+    const light=ctx.createRadialGradient(this.x,this.y-18,18,this.x,this.y-18,430);
+    light.addColorStop(0,'rgba(255,169,83,.13)');light.addColorStop(.45,'rgba(255,130,52,.055)');light.addColorStop(1,'rgba(255,130,52,0)');
+    ctx.fillStyle=light;ctx.fillRect(this.x-440,top,880,this.groundY-top);
+    ctx.restore();
+  }
+
   // ==========================================
   // THE FLAME FAMILY SANCTUARY & TIGHT EMBRACE HUG
   // ==========================================
@@ -3701,6 +3756,15 @@ export class GameEngine2D {
       ctx.fill();
     }
 
+    // In the Roman catacomb stage, the family is visibly imprisoned until
+    // the final battle is cleared; the gate slides apart during the embrace.
+    if (this.currentStageIndex === 4) {
+      const opening = this.isReunited ? Math.min(1, this.reunionTimer * 1.8) : 0;
+      ctx.strokeStyle = '#8d969d'; ctx.lineWidth = 4; ctx.shadowColor = '#05080b'; ctx.shadowBlur = 8;
+      for (let bar=-4;bar<=4;bar++) { const bx=bar*13 + (bar<0?-opening*42:opening*42); ctx.beginPath();ctx.moveTo(bx,-118);ctx.lineTo(bx,-2);ctx.stroke(); }
+      ctx.strokeStyle='#b38a54';ctx.lineWidth=4;ctx.strokeRect(-62,-124,124,126);
+      if(!this.isReunited){ctx.fillStyle='#d9b46d';ctx.beginPath();ctx.arc(44,-58,7,0,Math.PI*2);ctx.fill();}
+    }
     // STRICT USER REQUIREMENT: Absolutely NO text written above the family!
     ctx.restore();
   }

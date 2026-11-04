@@ -53,6 +53,11 @@ export interface SkillLevels {
   azureNova: number;          // Supernova ultimate
   soulMagnet: number;         // Legacy save compatibility only
   flightDuration: number;     // Flight token duration upgrade
+  staminaCapacity: number;    // Maximum stamina pool
+  wardDuration: number;       // Protective ward duration
+  maxHealth: number;          // Maximum health upgrade
+  defense: number;            // Independent armor upgrade
+  attackPower: number;        // Independent damage upgrade
 }
 
 export interface ControlButtonPosition {

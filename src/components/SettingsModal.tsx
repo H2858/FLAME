@@ -6,11 +6,13 @@ import { soundManager } from '../audio/soundManager';
 
 interface Props {
   settings: GameSettings;
+  flameSkin: 'azure' | 'solar';
+  onEquipAzure: () => void;
   onUpdateSettings: (value: GameSettings) => void;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<Props> = ({ settings, onUpdateSettings, onClose }) => {
+export const SettingsModal: React.FC<Props> = ({ settings, flameSkin, onEquipAzure, onUpdateSettings, onClose }) => {
   const set = (patch: Partial<GameSettings>) => onUpdateSettings({ ...settings, ...patch });
   const quality: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
   const updateButton = (id: 'attack' | 'ward', patch: { size?: number; opacity?: number }) => {
@@ -23,6 +25,10 @@ export const SettingsModal: React.FC<Props> = ({ settings, onUpdateSettings, onC
         <div><h2 className="text-xl font-black text-cyan-200">Settings</h2><p className="text-xs text-slate-400">Customize your game experience</p></div>
         <button onClick={onClose} className="rounded-xl bg-white/10 p-2"><X /></button>
       </header>
+      <section className="mb-4 rounded-2xl border border-orange-400/20 bg-orange-950/20 p-4">
+        <h3 className="mb-2 flex items-center gap-2 font-bold text-orange-200"><Flame size={18}/> Flame appearance</h3>
+        <div className="flex items-center justify-between gap-3 text-sm"><span className="text-slate-300">Equipped: {flameSkin === 'solar' ? 'Solar Orange' : 'Azure Blue'}</span><button disabled={flameSkin === 'azure'} onClick={onEquipAzure} className="rounded-xl border border-cyan-300/30 bg-cyan-700/30 px-3 py-2 text-xs font-bold text-cyan-100 disabled:opacity-40">Equip Blue Flame</button></div>
+      </section>
       <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <h3 className="mb-3 flex items-center gap-2 font-bold text-cyan-200"><Monitor size={18}/> Graphics</h3>
         <div className="grid grid-cols-2 gap-2">{quality.map(q => <button key={q} onClick={() => set({ graphicsQuality: q })} className={`rounded-xl border px-3 py-2 text-sm font-semibold capitalize ${settings.graphicsQuality === q ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100' : 'border-white/10 bg-black/20 text-slate-300'}`}>{q}</button>)}</div>

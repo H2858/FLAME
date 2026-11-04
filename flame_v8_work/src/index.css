@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+
+  [dir="rtl"] {
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+
+  .font-serif {
+    font-family: 'Cinzel', 'Cairo', serif;
+  }
+}
+
+
+/* Responsive phone layout and safe-area handling. */
+html, body, #root { width: 100%; min-height: 100%; margin: 0; }
+html, body { overflow: hidden; }
+button, input { touch-action: manipulation; }
+@supports (height: 100dvh) { main { height: 100dvh; } }
+@media (max-width: 640px) {
+  [role="dialog"] { max-width: calc(100vw - 20px) !important; max-height: calc(100dvh - 24px) !important; }
+  .fixed.inset-0.z-50 { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+  .fixed.inset-0.z-50 > div { max-height: calc(100dvh - 20px); overflow-y: auto; border-radius: 16px; padding: 12px; }
+  .fixed.inset-0.z-50 h1 { font-size: clamp(1.1rem, 5vw, 1.6rem); }
+  .fixed.inset-0.z-50 h2 { font-size: clamp(1rem, 4.4vw, 1.35rem); }
+}

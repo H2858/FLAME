@@ -198,7 +198,7 @@ export default function App() {
       };
 
       engine.onVictory = () => {
-        const rewardedStats = { ...statsRef.current, souls: statsRef.current.souls + 100 };
+        const rewardedStats = { ...statsRef.current, souls: statsRef.current.souls + 28 };
         statsRef.current = rewardedStats;
         engine.stats = rewardedStats;
         setStats(rewardedStats);
@@ -238,40 +238,44 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
 
-  // Skill upgrade handler
+  // Every store item has its own level and affects only its matching stat/system.
   const handleUpgradeSkill = (skillKey: keyof SkillLevels, cost: number) => {
-    if (stats.souls < cost) return;
-
-    const newSouls = stats.souls - cost;
-    const isFlightUpgrade = skillKey === 'flightDuration';
-    const newSkillLevels = { ...skills, [skillKey]: (skills[skillKey] || 1) + 1 };
-    const newStats: PlayerStats = {
-      ...stats,
-      souls: newSouls,
-      flightLevel: isFlightUpgrade ? stats.flightLevel + 1 : stats.flightLevel,
-      maxHp: stats.maxHp,
-      defense: stats.defense + (skillKey === 'parryWard' ? 1 : 0),
-      attackPower: stats.attackPower + (skillKey === 'flameSlash' ? 4 : 0),
-    };
-
+    const currentLevel = Math.max(1, Number(skills[skillKey]) || 1);
+    if (stats.souls < cost || currentLevel >= 10) return;
+    const nextLevel = currentLevel + 1;
+    const newSkillLevels = { ...skills, [skillKey]: nextLevel };
+    const newStats: PlayerStats = { ...stats, souls: stats.souls - cost };
+    if (skillKey === 'attackPower') newStats.attackPower += 3;
+    if (skillKey === 'defense') newStats.defense += 2;
+    if (skillKey === 'maxHealth') { newStats.maxHp += 12; newStats.hp = Math.min(newStats.maxHp, newStats.hp + 12); }
+    if (skillKey === 'flightDuration') newStats.flightLevel = nextLevel;
     setSkills(newSkillLevels);
     setStats(newStats);
-
     if (engineRef.current) {
       engineRef.current.skills = newSkillLevels;
       engineRef.current.stats = newStats;
+      if (skillKey === 'staminaCapacity') {
+        engineRef.current.maxStamina = 100 + (nextLevel - 1) * 18;
+        engineRef.current.stamina = Math.min(engineRef.current.maxStamina, engineRef.current.stamina + 18);
+      }
+      if (skillKey === 'maxHealth') engineRef.current.stats.hp = newStats.hp;
     }
-
     persist(newStats, newSkillLevels);
   };
 
   const handleBuySolarFlame = () => {
-    if (flameSkin === 'solar' || stats.souls < 450) return;
-    const nextStats = { ...stats, souls: stats.souls - 450 };
+    if (flameSkin === 'solar' || stats.souls < 160) return;
+    const nextStats = { ...stats, souls: stats.souls - 160 };
     setFlameSkin('solar');
     setStats(nextStats);
     if (engineRef.current) { engineRef.current.flameSkin = 'solar'; engineRef.current.stats = nextStats; }
     persist(nextStats, undefined, undefined, undefined, undefined, 'solar');
+  };
+
+  const handleEquipAzureFlame = () => {
+    setFlameSkin('azure');
+    if (engineRef.current) engineRef.current.flameSkin = 'azure';
+    persist(undefined, undefined, undefined, undefined, undefined, 'azure');
   };
 
   // Settings update handler
@@ -378,7 +382,7 @@ export default function App() {
         <GameOverVictoryModal
           type="game_over"
           lang={settings.language}
-          soulsEarned={kills * 4}
+          soulsEarned={kills}
           stageName={currentStageName}
           onRetry={() => {
             engineRef.current?.restartStage();
@@ -395,7 +399,7 @@ export default function App() {
         <GameOverVictoryModal
           type="victory"
           lang={settings.language}
-          soulsEarned={targetKills * 10}
+          soulsEarned={targetKills * 2}
           stageName={currentStageName}
           isLastStage={stageIndex >= 19}
           onRetry={() => {
@@ -448,6 +452,8 @@ export default function App() {
       {showSettings && (
         <SettingsModal
           settings={settings}
+          flameSkin={flameSkin}
+          onEquipAzure={handleEquipAzureFlame}
           onUpdateSettings={handleUpdateSettings}
           onClose={() => setShowSettings(false)}
         />

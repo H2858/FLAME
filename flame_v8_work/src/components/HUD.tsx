@@ -8,7 +8,7 @@ import { Language, PlayerStats } from '../types/game';
 import { TRANSLATIONS } from '../i18n/translations';
 import { DamageNumber, Enemy2D } from '../game/GameEngine2D';
 import { TouchControlsLayout } from '../types/game';
-import { Flame, Gem, Pause, ShieldAlert, CircleHelp, Shield, Sword } from 'lucide-react';
+import { Flame, Gem, Pause, ShieldAlert, CircleHelp, Shield, Sword, Zap } from 'lucide-react';
 
 interface HUDProps {
   lang: Language;
@@ -98,8 +98,14 @@ export const HUD: React.FC<HUDProps> = ({
                 style={{ width: `${xpPercent}%` }}
               />
             </div>
-            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-900" title="Stamina">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-lime-300 transition-all duration-150" style={{ width: `${Math.max(0, Math.min(100, stamina))}%` }} />
+            <div className="mt-1.5 flex items-center gap-1.5" title="Stamina">
+              <Zap className="h-3 w-3 shrink-0 text-amber-300" />
+              <div className="flex h-1.5 flex-1 gap-[2px] overflow-hidden rounded-full bg-slate-900/90 p-[1px]">
+                {Array.from({ length: 20 }, (_, i) => (
+                  <span key={i} className={`h-full flex-1 rounded-[2px] transition-colors duration-150 ${i < Math.ceil(Math.max(0, Math.min(100, stamina)) / 5) ? 'bg-gradient-to-b from-amber-200 to-orange-500 shadow-[0_0_5px_rgba(251,146,60,.55)]' : 'bg-slate-700/70'}`} />
+                ))}
+              </div>
+              <span className="min-w-[22px] text-right font-mono text-[9px] text-amber-200">{Math.round(stamina)}%</span>
             </div>
           </div>
         </div>

@@ -2035,7 +2035,6 @@ export class GameEngine2D {
       ctx.save();
       for (let i = 0; i < 110; i++) {
         const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
-        const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
         const gy = this.terrainHeightAt(wx) + 18 + ((i * 31) % 150);
         ctx.fillStyle = i % 3 ? 'rgba(255,224,164,0.20)' : 'rgba(72,43,23,0.22)';
         ctx.fillRect(wx, gy, 2 + (i % 2), 1.2);

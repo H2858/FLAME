@@ -1818,16 +1818,19 @@ export class GameEngine2D {
     const palette = this.getActPalette();
     const isDesertBiome = [2, 6, 12, 17].includes(this.currentStageIndex);
     const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-    skyGrad.addColorStop(0, palette.top);
-    skyGrad.addColorStop(0.42, palette.mid);
-    skyGrad.addColorStop(0.78, palette.low);
-    skyGrad.addColorStop(1, '#05060c');
+    if (isDesertBiome) {
+      skyGrad.addColorStop(0, '#34243a'); skyGrad.addColorStop(0.34, '#a94f3e');
+      skyGrad.addColorStop(0.68, '#f08a45'); skyGrad.addColorStop(1, '#5a3028');
+    } else {
+      skyGrad.addColorStop(0, palette.top); skyGrad.addColorStop(0.42, palette.mid);
+      skyGrad.addColorStop(0.78, palette.low); skyGrad.addColorStop(1, '#05060c');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, width, height);
 
     // Glowing Stars & Twinkles
     ctx.fillStyle = '#ffffff';
-    for (let s = 0; s < 45; s++) {
+    for (let s = 0; !isDesertBiome && s < 45; s++) {
       const sx = (s * 137.5) % width;
       const sy = (s * 73.1) % (height * 0.55);
       const sRadius = s % 3 === 0 ? 1.5 : 1.0;
@@ -1854,6 +1857,7 @@ export class GameEngine2D {
       ctx.restore();
     }
 
+    if (!isDesertBiome) {
     // Giant Luminous Moon with Soft Aura
     const moonX = width * 0.78 - this.cameraX * 0.02;
     const moonY = 140 - this.cameraY * 0.02;
@@ -1885,6 +1889,11 @@ export class GameEngine2D {
     shade.addColorStop(0, 'rgba(2,8,20,.02)'); shade.addColorStop(.68, 'rgba(2,8,20,.02)'); shade.addColorStop(1, 'rgba(2,8,20,.42)');
     ctx.fillStyle = shade; ctx.fillRect(moonX-moonR, moonY-moonR, moonR*2, moonR*2); ctx.restore();
 
+    } else {
+      this.renderDesertSunrise(ctx, width, height);
+    }
+
+    if (!isDesertBiome) {
     // Cinematic aurora curtains on selected chapters (4, 9, 14, 19).
     if ([3, 8, 13, 18].includes(this.currentStageIndex)) {
       ctx.save();
@@ -1947,6 +1956,7 @@ export class GameEngine2D {
 
     // 3. Natural alpine range: broad shoulders, broken ridges, glacial shelves and varied snow lines.
     ctx.save();
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     const ridgeOffset = this.cameraX * 0.055;
     for (let i = -2; i < 8; i++) {
       const mx = i * 760 - (ridgeOffset % 760);
@@ -2015,6 +2025,10 @@ export class GameEngine2D {
     }
     ctx.restore();
 
+    } else {
+      // Desert horizon is intentionally free of mountains, castles and floating ruins.
+    }
+
     // Transform for World Coordinates with CINEMATIC CAMERA ZOOM
     ctx.save();
     if (this.cameraZoom !== 1.0) {
@@ -2025,7 +2039,7 @@ export class GameEngine2D {
     ctx.translate(offsetX, offsetY);
 
     // 4. LOW MISTY PREDATOR EYES (Lowered near ground, NOT in the sky!)
-    this.renderLowMistyEyes(ctx);
+    if (!isDesertBiome) this.renderLowMistyEyes(ctx);
 
     // 5. NIGHT MEADOW: deep green-black grassland with readable rolling contours.
     const groundLeft = this.cameraX - 600;
@@ -2077,15 +2091,26 @@ export class GameEngine2D {
         ctx.fillStyle = i % 3 ? 'rgba(255,224,164,0.20)' : 'rgba(72,43,23,0.22)';
         ctx.fillRect(wx, gy, 2 + (i % 2), 1.2);
       }
-      const firstCactus = Math.floor(groundLeft / 720) - 1;
-      const lastCactus = Math.ceil(groundRight / 720) + 1;
+      const firstCactus = Math.floor(groundLeft / 1050) - 1;
+      const lastCactus = Math.ceil(groundRight / 1050) + 1;
       for (let n = firstCactus; n <= lastCactus; n++) {
-        const cx = n * 720 + 540;
-        const cy = this.groundY - 5;
-        const scale = 0.72 + ((n % 3 + 3) % 3) * 0.16;
+        const cx = n * 1050 + 780; const cy = this.groundY - 4;
+        const scale = 0.68 + ((n % 3 + 3) % 3) * 0.14;
         ctx.save(); ctx.translate(cx, cy); ctx.scale(scale, scale);
-        ctx.fillStyle = '#244b35'; ctx.strokeStyle = '#72956a'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.roundRect(-8, -74, 16, 76, 8); ctx.roundRect(-28, -52, 13, 39, 7); ctx.roundRect(-28, -52, 25, 12, 6); ctx.roundRect(15, -62, 13, 43, 7); ctx.roundRect(3, -62, 25, 12, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#244333'; ctx.strokeStyle = 'rgba(151,177,119,0.38)'; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-10, 0); ctx.bezierCurveTo(-12, -28, -11, -66, -7, -91);
+        ctx.quadraticCurveTo(-4, -101, 2, -98); ctx.quadraticCurveTo(9, -96, 8, -86);
+        ctx.bezierCurveTo(5, -55, 8, -24, 10, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Rounded arms grow organically from the trunk instead of square blocks.
+        ctx.beginPath(); ctx.moveTo(-8, -39); ctx.bezierCurveTo(-26, -40, -30, -49, -29, -63);
+        ctx.quadraticCurveTo(-28, -72, -22, -72); ctx.quadraticCurveTo(-15, -72, -16, -63);
+        ctx.bezierCurveTo(-16, -54, -13, -51, -7, -51); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(7, -55); ctx.bezierCurveTo(24, -56, 28, -65, 27, -78);
+        ctx.quadraticCurveTo(26, -87, 20, -87); ctx.quadraticCurveTo(13, -87, 14, -78);
+        ctx.bezierCurveTo(14, -69, 12, -67, 7, -67); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(190,207,150,0.28)'; ctx.lineWidth = 1;
+        for (let rib = -5; rib <= 5; rib += 5) { ctx.beginPath(); ctx.moveTo(rib, -84); ctx.quadraticCurveTo(rib - 2, -48, rib + 1, -8); ctx.stroke(); }
         ctx.restore();
       }
       this.renderSandWhirlwinds(ctx, groundLeft, groundRight);
@@ -2224,6 +2249,67 @@ export class GameEngine2D {
     this.renderWeatherOverlay(ctx, width, height);
   }
 
+  /** Warm desert dawn: layered dunes, caravan silhouettes, palms and Bedouin tents. */
+  private renderDesertSunrise(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    const sunX = width * 0.72; const sunY = height * 0.43; const sunR = Math.min(width, height) * 0.17;
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.18, sunX, sunY, sunR * 2.8);
+    halo.addColorStop(0, 'rgba(255,190,105,0.40)'); halo.addColorStop(0.38, 'rgba(255,133,65,0.20)'); halo.addColorStop(1, 'rgba(255,110,55,0)');
+    ctx.fillStyle = halo; ctx.fillRect(0, 0, width, height * 0.82);
+    const sun = ctx.createRadialGradient(sunX - sunR * 0.22, sunY - sunR * 0.28, sunR * 0.08, sunX, sunY, sunR);
+    sun.addColorStop(0, '#fff2c6'); sun.addColorStop(0.55, '#ffbd72'); sun.addColorStop(1, '#f07845');
+    ctx.fillStyle = sun; ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // Distant dune contours are broad, softly graded masses rather than geometric triangles.
+    const dunes = [
+      { y: 0.63, amp: 30, color: '#9d5940', phase: 0.3 },
+      { y: 0.70, amp: 42, color: '#754333', phase: 1.8 },
+      { y: 0.77, amp: 35, color: '#4a3029', phase: 3.2 },
+    ];
+    dunes.forEach((d, idx) => {
+      ctx.beginPath(); ctx.moveTo(0, height * d.y);
+      for (let x = 0; x <= width + 20; x += 18) {
+        const y = height * d.y + Math.sin(x * 0.006 + d.phase) * d.amp + Math.sin(x * 0.014 + d.phase * 2) * d.amp * 0.22;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(width, height); ctx.lineTo(0, height); ctx.closePath();
+      const g = ctx.createLinearGradient(0, height * d.y - d.amp, 0, height);
+      g.addColorStop(0, idx === 0 ? '#d28a55' : d.color); g.addColorStop(1, '#21171a');
+      ctx.fillStyle = g; ctx.fill();
+    });
+    // Distant caravan: tiny readable camel profiles moving along the ridge.
+    const drift = (this.flameTimer * 10) % (width + 180);
+    for (let i = 0; i < 4; i++) {
+      const cx = ((i * 115 + drift) % (width + 180)) - 90;
+      const cy = height * (0.655 + (i % 2) * 0.025) + Math.sin(cx * 0.006) * 15;
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(0.58 + (i % 3) * 0.08, 0.58 + (i % 3) * 0.08);
+      ctx.fillStyle = 'rgba(30,20,22,0.92)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-7, -11, 7, 0, Math.PI * 2); ctx.arc(11, -10, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(17, -7); ctx.quadraticCurveTo(28, -21, 25, -28); ctx.lineTo(30, -30); ctx.quadraticCurveTo(34, -14, 24, -3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,20,22,0.95)'; ctx.lineWidth = 3;
+      for (const leg of [-15, -5, 10, 18]) { const swing = Math.sin(this.flameTimer * 4 + i + leg) * 3; ctx.beginPath(); ctx.moveTo(leg, 4); ctx.lineTo(leg + swing, 18); ctx.stroke(); }
+      ctx.restore();
+    }
+    // Bedouin tents as low black canvas silhouettes.
+    for (let i = 0; i < 3; i++) {
+      const tx = width * (0.16 + i * 0.27); const ty = height * (0.715 + (i % 2) * 0.025); const sc = 0.7 + (i % 2) * 0.18;
+      ctx.save(); ctx.translate(tx, ty); ctx.scale(sc, sc); ctx.fillStyle = 'rgba(24,17,20,0.88)';
+      ctx.beginPath(); ctx.moveTo(-42, 8); ctx.lineTo(0, -27); ctx.lineTo(42, 8); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-42, 7, 84, 5); ctx.strokeStyle = 'rgba(25,18,20,0.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-32, 7); ctx.lineTo(-48, 22); ctx.moveTo(32, 7); ctx.lineTo(48, 22); ctx.stroke(); ctx.restore();
+    }
+    // Palm silhouettes at the far horizon, with curved fronds.
+    for (let i = 0; i < 5; i++) {
+      const px = width * (0.04 + i * 0.23); const py = height * (0.70 + (i % 2) * 0.02); const h = 42 + (i % 3) * 12;
+      ctx.save(); ctx.translate(px, py); ctx.strokeStyle = 'rgba(24,18,21,0.94)'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(5, -h * 0.5, -2, -h); ctx.stroke();
+      ctx.lineWidth = 3;
+      for (let f = 0; f < 7; f++) { const a = (f / 7) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(-2, -h); ctx.quadraticCurveTo(Math.cos(a) * 18, -h - 19, Math.cos(a) * 32, -h + Math.sin(a) * 14); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+
   /** Full-viewport weather is rendered in screen space so camera transforms cannot crop it. */
   private renderWeatherOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
     const stormStages = [5, 7, 8, 15, 16];
@@ -2239,12 +2325,19 @@ export class GameEngine2D {
     }
     if (storm) {
       ctx.fillStyle = 'rgba(19,39,58,0.075)'; ctx.fillRect(0, 0, width, height);
-      const rainCount = Math.min(260, Math.max(150, Math.floor(width * height / 3000)));
-      ctx.lineWidth = 1.15; ctx.strokeStyle = 'rgba(190,220,242,0.36)';
+      const rainCount = Math.min(340, Math.max(190, Math.floor(width * height / 2300)));
       for (let i = 0; i < rainCount; i++) {
-        const x = (i * 83.17 + this.flameTimer * 390) % (width + 36) - 18;
-        const y = (i * 47.31 + this.flameTimer * 720) % (height + 36) - 18;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 9, y + 27); ctx.stroke();
+        const x = (i * 83.17 + this.flameTimer * 410) % (width + 52) - 26;
+        const y = (i * 47.31 + this.flameTimer * 760) % (height + 64) - 32;
+        const length = 12 + (i % 5) * 4;
+        const drop = ctx.createLinearGradient(x, y, x - 4, y + length);
+        drop.addColorStop(0, 'rgba(210,232,250,0)');
+        drop.addColorStop(0.22, 'rgba(210,232,250,0.18)');
+        drop.addColorStop(0.78, 'rgba(210,232,250,0.48)');
+        drop.addColorStop(1, 'rgba(210,232,250,0)');
+        ctx.fillStyle = drop;
+        ctx.beginPath(); ctx.moveTo(x - 1.8, y); ctx.quadraticCurveTo(x + 0.4, y + length * 0.48, x - 4, y + length);
+        ctx.quadraticCurveTo(x - 2.2, y + length * 0.42, x - 1.8, y); ctx.fill();
       }
       // Rare branching lightning flashes, followed by a short fading sky illumination.
       const thunderElapsed = this.flameTimer + this.currentStageIndex * 1.73;
@@ -2262,12 +2355,15 @@ export class GameEngine2D {
     }
     if (desert) {
       // Wind-driven fine sand veils the lower and middle playfield, not just the sky.
-      ctx.fillStyle = 'rgba(224,174,103,0.045)'; ctx.fillRect(0, height * 0.35, width, height * 0.65);
-      ctx.strokeStyle = 'rgba(245,205,145,0.18)'; ctx.lineWidth = 1;
-      for (let i = 0; i < 95; i++) {
-        const x = (i * 71 + this.flameTimer * 165) % (width + 40) - 20;
-        const y = height * 0.42 + ((i * 53) % Math.max(1, Math.floor(height * 0.55)));
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 18 + (i % 4) * 6, y - 1); ctx.stroke();
+      const veil = ctx.createLinearGradient(0, height * 0.32, 0, height);
+      veil.addColorStop(0, 'rgba(224,174,103,0)'); veil.addColorStop(1, 'rgba(224,174,103,0.11)');
+      ctx.fillStyle = veil; ctx.fillRect(0, height * 0.32, width, height * 0.68);
+      for (let i = 0; i < 150; i++) {
+        const x = (i * 71 + this.flameTimer * (95 + i % 4 * 13)) % (width + 28) - 14;
+        const y = height * 0.40 + ((i * 53) % Math.max(1, Math.floor(height * 0.58)));
+        const r = 0.8 + (i % 4) * 0.55;
+        ctx.fillStyle = `rgba(255,220,166,${0.08 + (i % 5) * 0.025})`;
+        ctx.beginPath(); ctx.ellipse(x, y, r * 2.8, r, -0.08, 0, Math.PI * 2); ctx.fill();
       }
     }
     ctx.restore();
@@ -2365,25 +2461,46 @@ export class GameEngine2D {
     }
   }
 
-  /** Sparse animated sand devils, anchored to the desert world and kept away from the hero. */
+  /** Volumetric desert dust devils: layered translucent sand, never wireframe rings. */
   private renderSandWhirlwinds(ctx: CanvasRenderingContext2D, left: number, right: number) {
-    const first = Math.floor(left / 1650) - 1;
-    const last = Math.ceil(right / 1650) + 1;
+    const first = Math.floor(left / 1900) - 1;
+    const last = Math.ceil(right / 1900) + 1;
     for (let n = first; n <= last; n++) {
-      const x = n * 1650 + 1050;
-      const phase = this.flameTimer * 1.15 + n * 2.7;
-      const height = 92 + (Math.sin(phase * 0.55) + 1) * 28;
-      const width = 22 + Math.sin(phase) * 5;
-      ctx.save(); ctx.translate(x, this.groundY - 2);
-      const haze = ctx.createRadialGradient(0, -height * 0.42, 4, 0, -height * 0.42, height * 0.8);
-      haze.addColorStop(0, 'rgba(245,205,145,0.18)'); haze.addColorStop(1, 'rgba(245,205,145,0)');
-      ctx.fillStyle = haze; ctx.beginPath(); ctx.ellipse(0, -height * 0.42, width * 2.4, height * 0.72, 0, 0, Math.PI * 2); ctx.fill();
-      for (let band = 0; band < 7; band++) {
-        const t = band / 6; const y = -height * (0.12 + t * 0.82);
-        const radius = width * (0.95 - t * 0.78);
-        const drift = Math.sin(phase * 2.1 + band * 0.9) * (8 + t * 8);
-        ctx.strokeStyle = `rgba(239,190,119,${0.34 - t * 0.025})`; ctx.lineWidth = 2.2 - t * 0.12;
-        ctx.beginPath(); ctx.ellipse(drift, y, radius, 5 + (1 - t) * 4, phase * 0.15 + band * 0.08, 0.15, Math.PI * 1.85); ctx.stroke();
+      const x = n * 1900 + 1180;
+      const phase = this.flameTimer * 0.72 + n * 2.3;
+      const h = 150 + (Math.sin(phase * 0.45) + 1) * 42;
+      const baseW = 54 + Math.sin(phase * 0.8) * 8;
+      ctx.save(); ctx.translate(x, this.groundY - 3);
+      ctx.globalCompositeOperation = 'screen';
+      const body = ctx.createLinearGradient(-baseW, -h, baseW, 0);
+      body.addColorStop(0, 'rgba(190,126,65,0)');
+      body.addColorStop(0.22, 'rgba(218,163,94,0.10)');
+      body.addColorStop(0.52, 'rgba(246,203,139,0.25)');
+      body.addColorStop(0.78, 'rgba(205,143,76,0.14)');
+      body.addColorStop(1, 'rgba(190,126,65,0)');
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.moveTo(-baseW * 1.35, 0);
+      ctx.bezierCurveTo(-baseW * 0.45, -h * 0.28, -baseW * 0.9, -h * 0.70, -baseW * 0.18, -h);
+      ctx.quadraticCurveTo(baseW * 0.18, -h * 0.94, baseW * 0.32, -h * 0.70);
+      ctx.bezierCurveTo(baseW * 0.88, -h * 0.40, baseW * 0.48, -h * 0.18, baseW * 1.35, 0);
+      ctx.closePath(); ctx.fill();
+      for (let layer = 0; layer < 8; layer++) {
+        const t = layer / 7;
+        const yy = -h * (0.08 + t * 0.82);
+        const widthAtY = baseW * (1.05 - t * 0.78);
+        const sway = Math.sin(phase * 1.7 + layer * 0.9) * (8 + t * 15);
+        const glow = ctx.createRadialGradient(sway, yy, 1, sway, yy, widthAtY * 1.8);
+        glow.addColorStop(0, 'rgba(255,222,166,0.15)'); glow.addColorStop(1, 'rgba(255,222,166,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(sway, yy, widthAtY * 1.8, 9 + (1 - t) * 8, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let mote = 0; mote < 34; mote++) {
+        const t = (mote / 34 + this.flameTimer * 0.12 + n * 0.17) % 1;
+        const yy = -h * t;
+        const orbit = (1 - t) * baseW * (0.35 + (mote % 5) * 0.10);
+        const xx = Math.sin(phase * 2.1 + t * 13 + mote) * orbit;
+        ctx.fillStyle = `rgba(255,220,166,${0.10 + (mote % 4) * 0.035})`;
+        ctx.beginPath(); ctx.ellipse(xx, yy, 1.2 + (mote % 3) * 0.6, 2.2 + (mote % 3), phase, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
     }

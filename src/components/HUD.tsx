@@ -200,12 +200,12 @@ export const HUD: React.FC<HUDProps> = ({
       </div>
 
       {/* Dedicated touch combat controls: flame shot, sword strike, protective ward. */}
-      <div className="pointer-events-none absolute bottom-7 right-4 sm:right-8 flex items-end gap-3">
-        <button onClick={onFlame} disabled={flameCooldown > 0} className="pointer-events-auto relative rounded-full border border-cyan-200/80 bg-slate-950/80 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.30)] backdrop-blur-md active:scale-90 disabled:opacity-45 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Shoot Azure Flame">
+      <div className="pointer-events-none absolute bottom-7 right-4 sm:right-8 z-20 flex items-end gap-3">
+        <button onPointerDown={e => { e.preventDefault(); onFlame(); }} disabled={flameCooldown > 0} className="pointer-events-auto relative rounded-full border border-cyan-200/80 bg-slate-950/80 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.30)] backdrop-blur-md active:scale-90 disabled:opacity-45 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Shoot Azure Flame">
           <Flame className="w-7 h-7" />
           {flameCooldown > 0 ? <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 px-1.5 text-[9px] text-slate-300">{flameCooldown.toFixed(1)}s</span> : null}
         </button>
-        <button onClick={onSword} className="pointer-events-auto relative rounded-full border border-sky-200/80 bg-slate-950/80 text-sky-100 shadow-[0_0_24px_rgba(56,189,248,0.30)] backdrop-blur-md active:scale-90 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Sword attack">
+        <button onPointerDown={e => { e.preventDefault(); onSword(); }} className="pointer-events-auto relative rounded-full border border-sky-200/80 bg-slate-950/80 text-sky-100 shadow-[0_0_24px_rgba(56,189,248,0.30)] backdrop-blur-md active:scale-90 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.attack.size, height: controlsLayout.buttons.attack.size, opacity: controlsLayout.buttons.attack.opacity}} aria-label="Sword attack">
           <Sword className="w-7 h-7" />
         </button>
         <button onClick={onWard} disabled={wardCooldown > 0 || wardTime > 0} className="pointer-events-auto relative rounded-full border border-emerald-200/80 bg-slate-950/80 text-emerald-100 shadow-[0_0_24px_rgba(110,231,183,0.25)] backdrop-blur-md active:scale-90 disabled:opacity-45 flex items-center justify-center transition-all" style={{width: controlsLayout.buttons.ward.size, height: controlsLayout.buttons.ward.size, opacity: controlsLayout.buttons.ward.opacity}} aria-label="Protection Shield">

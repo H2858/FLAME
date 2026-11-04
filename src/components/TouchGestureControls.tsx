@@ -78,7 +78,7 @@ export const TouchGestureControls: React.FC<Props> = ({ engine }) => {
   };
 
   return <div
-    className="absolute inset-0 z-[9] touch-none select-none"
+    className="absolute left-0 top-0 bottom-0 z-[9] w-1/2 touch-none select-none"
     style={{ touchAction: 'none' }}
     onPointerDown={onDown}
     onPointerMove={onMove}

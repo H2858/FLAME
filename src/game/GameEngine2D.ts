@@ -2035,7 +2035,6 @@ export class GameEngine2D {
       ctx.save();
       for (let i = 0; i < 110; i++) {
         const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
-        const wx = groundLeft + ((i * 97 + 23) % Math.max(1, groundWidth));
         const gy = this.terrainHeightAt(wx) + 18 + ((i * 31) % 150);
         ctx.fillStyle = i % 3 ? 'rgba(255,224,164,0.20)' : 'rgba(72,43,23,0.22)';
         ctx.fillRect(wx, gy, 2 + (i % 2), 1.2);
@@ -2121,7 +2120,7 @@ export class GameEngine2D {
     for (let i = 0; !isDesert && i < 24; i++) {
       const wx = groundLeft + ((i * 137 + 31) % Math.max(1, groundWidth));
       const gy = this.terrainHeightAt(wx) + 8 + (i % 5) * 11;
-      ctx.fillStyle = isRoseMeadow ? `rgba(255,190,226,${0.15 + (i % 3) * 0.05})` : `rgba(139,190,126,${0.12 + (i % 3) * 0.05})`;
+      ctx.fillStyle = isRoseMeadow ? `rgba(255,190,226,${0.12 + (i % 3) * 0.05})` : `rgba(139,190,126,${0.12 + (i % 3) * 0.05})`;
       ctx.beginPath(); ctx.arc(wx, gy, 1 + (i % 2), 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();

@@ -166,7 +166,12 @@ export class GameEngine2D {
 
   // Night-meadow route: rolling grassy ridges with a continuous safe floor.
   private terrainHeightAt(worldX: number): number {
-    return this.groundY;
+    // Desert routes follow broad dune crests; other biomes retain a restrained natural roll.
+    const desert = [2, 6, 12, 17].includes(this.currentStageIndex);
+    if (desert) {
+      return this.groundY + Math.sin(worldX * 0.00105 + 0.6) * 13 + Math.sin(worldX * 0.00235 + 1.8) * 4.2;
+    }
+    return this.groundY + Math.sin(worldX * 0.0017) * 2.4 + Math.sin(worldX * 0.0041 + 1.2) * 1.15;
   }
 
   private isSinkholeAt(_worldX: number): boolean { return false; }
@@ -199,8 +204,9 @@ export class GameEngine2D {
 
   // Distant ravens crossing the moon at irregular intervals.
   private crows: Array<{ x: number; y: number; speed: number; scale: number; phase: number; direction: 1 | -1 }> = [];
-  private crowSpawnTimer = 5 + Math.random() * 7;
+  private crowSpawnTimer = 14 + Math.random() * 12;
   private lastThunderCycle = -1;
+  private lastAircraftPassCycle = -1;
 
   // Collectible Tokens in the World
   public worldTokens: WorldToken2D[] = [];
@@ -254,6 +260,7 @@ export class GameEngine2D {
 
   // Stages & Progress (20 Stages)
   public currentStageIndex = 0;
+  public flameSkin: 'azure' | 'solar' = 'azure';
   public enemiesKilledInStage = 0;
   public isStageComplete = false;
   public isBossSpawned = false;
@@ -412,13 +419,12 @@ export class GameEngine2D {
    */
   private setupWorldTokens() {
     this.worldTokens = [];
-    // Place tokens every 600px along the forward path
+    // Flight runes are rare premium pickups; stamina cores remain more common.
     for (let i = 0; i < 18; i++) {
-      const isFlight = i % 3 === 0;
+      const isFlight = i === 5 || i === 13;
       const x = 900 + i * 720 + Math.random() * 180;
-      // Alternate between ground height and elevated platform height
       const onPlatform = i % 3 === 1;
-      const inSky = i % 7 === 4;
+      const inSky = isFlight;
       const y = inSky ? 205 + (i % 3) * 34 : onPlatform ? 330 : this.groundY - 35;
 
       this.worldTokens.push({
@@ -885,7 +891,7 @@ export class GameEngine2D {
 
       // Reveal the family altar at the end of the road!
       this.familyAltarX = this.x + 1650;
-      soundManager.playFamilyRevealChime();
+      soundManager.playFamilyArrival();
 
       // All active enemies vaporize into cinders
       for (const e of this.enemies) {
@@ -1058,7 +1064,7 @@ export class GameEngine2D {
 
   private spawnBoss(bossType: EnemyType) {
     this.isBossSpawned = true;
-    soundManager.playNova();
+    soundManager.playBossArrival();
     this.addScreenShake(22);
 
     const spawnX = this.x + 680;
@@ -1226,6 +1232,7 @@ export class GameEngine2D {
       if (this.flightDuration > 0) {
         this.flightDuration -= dt;
         this.isHorizontalFlightActive = true;
+        soundManager.startCharacterFlight();
 
         // Piercing forward horizontal rocket velocity!
         const horizontalInput = this.moveInput.x || (this.keysPressed['ArrowRight'] || this.keysPressed['KeyD'] ? 1 : this.keysPressed['ArrowLeft'] || this.keysPressed['KeyA'] ? -1 : this.facing * 0.35);
@@ -1275,6 +1282,7 @@ export class GameEngine2D {
         }
       } else {
         this.isHorizontalFlightActive = false;
+        soundManager.stopCharacterFlight();
 
         let inputX = this.moveInput.x;
         if (this.keysPressed['KeyA'] || this.keysPressed['ArrowLeft']) inputX -= 1;
@@ -1817,6 +1825,8 @@ export class GameEngine2D {
     // 1. Deep Cosmic Night Sky (NO TREES)
     const palette = this.getActPalette();
     const isDesertBiome = [2, 6, 12, 17].includes(this.currentStageIndex);
+    const cityBiome = this.getCityBiome();
+    const isStoneBiome = [9, 18].includes(this.currentStageIndex);
     const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
     if (isDesertBiome) {
       skyGrad.addColorStop(0, '#34243a'); skyGrad.addColorStop(0.34, '#a94f3e');
@@ -1954,79 +1964,13 @@ export class GameEngine2D {
     // Ravens are rendered in screen space so they visibly cross in front of the moon.
     this.renderCrows(ctx);
 
-    // 3. Natural alpine range: broad shoulders, broken ridges, glacial shelves and varied snow lines.
-    ctx.save();
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    const ridgeOffset = this.cameraX * 0.055;
-    for (let i = -2; i < 8; i++) {
-      const mx = i * 760 - (ridgeOffset % 760);
-      const baseY = height * 0.805;
-      const peakX = mx + 260 + ((i * 37 % 5) * 27);
-      const peakY = height * (0.35 + ((i * 11 % 4) * 0.035));
-      const leftFoot = mx - 80;
-      const rightFoot = mx + 650;
-      const shoulderA = mx + 95 + (i % 3) * 18;
-      const shoulderB = mx + 455 + (i % 4) * 13;
-      const notchX = peakX + 92;
-      ctx.beginPath();
-      ctx.moveTo(leftFoot, baseY);
-      ctx.bezierCurveTo(mx + 15, baseY - 35, shoulderA - 25, peakY + 155, shoulderA + 42, peakY + 118);
-      ctx.bezierCurveTo(mx + 185, peakY + 95, peakX - 115, peakY + 62, peakX - 42, peakY + 18);
-      ctx.quadraticCurveTo(peakX - 12, peakY - 2, peakX + 8, peakY + 3);
-      ctx.bezierCurveTo(peakX + 68, peakY + 45, notchX - 12, peakY + 92, notchX + 40, peakY + 104);
-      ctx.bezierCurveTo(mx + 425, peakY + 138, shoulderB - 10, baseY - 45, rightFoot, baseY);
-      ctx.closePath();
-      const rock = ctx.createLinearGradient(mx, peakY, mx + 600, baseY);
-      rock.addColorStop(0, isDesertBiome ? '#b98a56' : i % 2 ? '#24364d' : '#1b3049');
-      rock.addColorStop(0.42, isDesertBiome ? '#765137' : palette.ridge);
-      rock.addColorStop(1, isDesertBiome ? '#21170f' : '#080f20');
-      ctx.fillStyle = rock; ctx.fill();
-
-      // Layered rock faces follow the mountain slope instead of forming triangular wedges.
-      ctx.fillStyle = 'rgba(150,180,202,0.10)';
-      ctx.beginPath(); ctx.moveTo(peakX - 35, peakY + 20); ctx.bezierCurveTo(peakX - 105, peakY + 75, mx + 155, baseY - 72, mx + 45, baseY - 18); ctx.lineTo(peakX - 8, peakY + 118); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(2,8,23,0.28)';
-      ctx.beginPath(); ctx.moveTo(peakX + 10, peakY + 5); ctx.bezierCurveTo(peakX + 105, peakY + 85, mx + 490, baseY - 85, rightFoot - 45, baseY - 10); ctx.lineTo(peakX + 82, peakY + 145); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(180,205,220,0.10)'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(peakX - 5, peakY + 48); ctx.quadraticCurveTo(peakX - 72, peakY + 115, mx + 225, baseY - 92); ctx.stroke();
-      // Snow only on selected high ridges, with irregular drifts and exposed rock cuts.
-      if (!isDesertBiome && (i % 3 === 0 || this.currentStageIndex >= 10)) {
-        ctx.fillStyle = 'rgba(225,240,249,0.88)';
-        ctx.beginPath(); ctx.moveTo(peakX - 38, peakY + 24); ctx.quadraticCurveTo(peakX - 12, peakY - 1, peakX + 10, peakY + 5); ctx.lineTo(peakX + 34, peakY + 31); ctx.lineTo(peakX + 18, peakY + 26); ctx.lineTo(peakX + 4, peakY + 38); ctx.lineTo(peakX - 12, peakY + 27); ctx.lineTo(peakX - 25, peakY + 35); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(peakX - 30, peakY + 20); ctx.quadraticCurveTo(peakX - 9, peakY + 1, peakX + 7, peakY + 8); ctx.lineTo(peakX - 7, peakY + 20); ctx.closePath(); ctx.fill();
-      }
+    // 3. Background silhouette: cedar-covered mountain range or a dedicated city skyline.
+    if (cityBiome !== null) {
+      this.renderCityBackdrop(ctx, width, height, cityBiome);
+    } else if (!isDesertBiome) {
+      this.renderCedarMountainRange(ctx, width, height);
+      this.renderDistantCastle(ctx, width, height, palette.accent);
     }
-    ctx.restore();
-
-    // Rare distant castles and airborne fire drakes are decorative, never collision objects.
-    this.renderDistantCastle(ctx, width, height, palette.accent);
-
-    // Distant act landmarks: broken citadels, spires and floating basalt shelves.
-    // The parallax offset is deliberately tiny to create depth without distracting from combat.
-    ctx.save();
-    const parallax = this.cameraX * 0.13;
-    for (let i = 0; i < 9; i++) {
-      const baseX = ((i * 287 - parallax) % (width + 520)) - 180;
-      const baseY = height * (0.48 + (i % 3) * 0.035);
-      const towerW = 42 + (i % 4) * 17;
-      ctx.fillStyle = i % 2 ? '#111a31' : palette.ridge;
-      ctx.beginPath();
-      ctx.moveTo(baseX - 18, baseY + 100); ctx.lineTo(baseX - 9, baseY + 18);
-      ctx.lineTo(baseX + towerW * .5, baseY - (70 + (i % 3) * 22));
-      ctx.lineTo(baseX + towerW + 10, baseY + 18); ctx.lineTo(baseX + towerW + 22, baseY + 100); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = palette.accent; ctx.globalAlpha = .2 + (i % 3) * .08;
-      ctx.fillRect(baseX + towerW * .48, baseY + 2, 3, 42 + (i % 2) * 18); ctx.globalAlpha = 1;
-      // Floating rock shelf with luminous mineral seam.
-      if (i % 2 === 0) {
-        const fx = baseX + 75; const fy = baseY + 65;
-        ctx.fillStyle = '#101a2c'; ctx.beginPath(); ctx.moveTo(fx-45,fy); ctx.lineTo(fx-24,fy-12); ctx.lineTo(fx+34,fy-8); ctx.lineTo(fx+54,fy+3); ctx.lineTo(fx+25,fy+17); ctx.lineTo(fx-30,fy+13); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = palette.accent; ctx.globalAlpha = .35; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx-20,fy+2); ctx.lineTo(fx+24,fy+4); ctx.stroke(); ctx.globalAlpha = 1;
-      }
-    }
-    ctx.restore();
-
-    } else {
-      // Desert horizon is intentionally free of mountains, castles and floating ruins.
     }
 
     // Transform for World Coordinates with CINEMATIC CAMERA ZOOM
@@ -2058,6 +2002,8 @@ export class GameEngine2D {
     const meadow = ctx.createLinearGradient(0, this.groundY - 65, 0, this.groundY + 420);
     if (isDesert) {
       meadow.addColorStop(0, '#d6a85e'); meadow.addColorStop(0.10, '#9b6a36'); meadow.addColorStop(0.42, '#5a3822'); meadow.addColorStop(1, '#1c120d');
+    } else if (isStoneBiome) {
+      meadow.addColorStop(0, '#777b7e'); meadow.addColorStop(0.10, '#4c5158'); meadow.addColorStop(0.38, '#252b34'); meadow.addColorStop(1, '#0b0e13');
     } else if (isRoseMeadow) {
       meadow.addColorStop(0, '#8f527e'); meadow.addColorStop(0.10, '#60334f'); meadow.addColorStop(0.38, '#321c32'); meadow.addColorStop(1, '#100b18');
     } else {
@@ -2094,7 +2040,7 @@ export class GameEngine2D {
       const firstCactus = Math.floor(groundLeft / 1050) - 1;
       const lastCactus = Math.ceil(groundRight / 1050) + 1;
       for (let n = firstCactus; n <= lastCactus; n++) {
-        const cx = n * 1050 + 780; const cy = this.groundY - 4;
+        const cx = n * 1050 + 780; const cy = this.terrainHeightAt(cx) - 4;
         const scale = 0.68 + ((n % 3 + 3) % 3) * 0.14;
         ctx.save(); ctx.translate(cx, cy); ctx.scale(scale, scale);
         ctx.fillStyle = '#244333'; ctx.strokeStyle = 'rgba(151,177,119,0.38)'; ctx.lineWidth = 1.4;
@@ -2117,6 +2063,57 @@ export class GameEngine2D {
       ctx.restore();
     }
 
+    if (isRoseMeadow) {
+      // Japanese spring grove: layered jacaranda/cherry-like crowns with soft pink blossom clusters.
+      const groveStart = Math.floor(groundLeft / 760) - 1;
+      const groveEnd = Math.ceil(groundRight / 760) + 1;
+      for (let tree = groveStart; tree <= groveEnd; tree++) {
+        const tx = tree * 760 + 340;
+        const ty = this.terrainHeightAt(tx) - 5;
+        ctx.save(); ctx.translate(tx, ty); ctx.globalAlpha = 0.78;
+        ctx.strokeStyle = '#342238'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-10, -42, 2, -94); ctx.moveTo(-2, -48); ctx.quadraticCurveTo(-42, -70, -55, -91); ctx.moveTo(0, -62); ctx.quadraticCurveTo(38, -76, 52, -102); ctx.stroke();
+        const clusters = [[-45,-92,25],[-20,-112,30],[12,-118,34],[43,-105,27],[0,-86,31],[-58,-76,18],[57,-82,19]];
+        for (let c = 0; c < clusters.length; c++) {
+          const [cx, cy, r] = clusters[c];
+          const bloom = ctx.createRadialGradient(cx - r * .25, cy - r * .3, 2, cx, cy, r);
+          bloom.addColorStop(0, '#ffe5f2'); bloom.addColorStop(.55, c % 2 ? '#f4a8d0' : '#e98bc2'); bloom.addColorStop(1, 'rgba(166,74,133,0.18)');
+          ctx.fillStyle = bloom; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+          for (let petal = 0; petal < 8; petal++) { const a = petal * Math.PI / 4; ctx.fillStyle = 'rgba(255,235,246,0.55)'; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r * .55, cy + Math.sin(a) * r * .55, 3.2, 0, Math.PI * 2); ctx.fill(); }
+        }
+        ctx.restore();
+      }
+      // Tiny flowers and drifting petals make the pink meadow feel alive without obscuring combat.
+      for (let f = 0; f < 72; f++) {
+        const wx = groundLeft + ((f * 113 + 41) % Math.max(1, groundWidth));
+        const gy = this.terrainHeightAt(wx) + 10 + (f % 5) * 13;
+        ctx.fillStyle = f % 3 ? 'rgba(255,190,226,0.72)' : 'rgba(255,239,248,0.82)';
+        ctx.beginPath(); ctx.arc(wx, gy, 1.5 + (f % 2), 0, Math.PI * 2); ctx.fill();
+      }
+      for (let petal = 0; petal < 18; petal++) {
+        const px = groundLeft + ((petal * 173 + this.flameTimer * (13 + petal % 4 * 4)) % Math.max(1, groundWidth));
+        const py = this.groundY - 70 - ((petal * 37 + this.flameTimer * 9) % 150);
+        ctx.save(); ctx.translate(px, py); ctx.rotate(this.flameTimer * .7 + petal);
+        ctx.fillStyle = 'rgba(255,190,224,0.72)'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+    }
+
+    if (isStoneBiome) {
+      // Irregular old-city stone paving: staggered joints, bevel highlights and subtle wear.
+      const rowH = 30;
+      for (let row = 0; row < 9; row++) {
+        const y = this.groundY + row * rowH + 8;
+        const tileW = 76 + (row % 3) * 8;
+        const offset = (row % 2) * tileW * 0.5 - (groundLeft % tileW);
+        for (let col = -2; col < Math.ceil(groundWidth / tileW) + 3; col++) {
+          const x = groundLeft + col * tileW + offset;
+          ctx.fillStyle = `rgba(180,190,198,${0.035 + (col + row) % 3 * 0.012})`;
+          ctx.beginPath(); ctx.roundRect(x + 2, y + 2, tileW - 5, rowH - 5, 3); ctx.fill();
+          ctx.strokeStyle = 'rgba(5,9,15,0.48)'; ctx.lineWidth = 1.2; ctx.stroke();
+          ctx.strokeStyle = 'rgba(220,228,232,0.08)'; ctx.beginPath(); ctx.moveTo(x + 5, y + 4); ctx.lineTo(x + tileW - 9, y + 4); ctx.stroke();
+        }
+      }
+    }
     // Sparse dew glints, subdued so the playfield stays clear.
     for (let i = 0; !isDesert && i < 24; i++) {
       const wx = groundLeft + ((i * 137 + 31) % Math.max(1, groundWidth));
@@ -2249,16 +2246,157 @@ export class GameEngine2D {
     this.renderWeatherOverlay(ctx, width, height);
   }
 
+  private getCityBiome(): 'algiers' | 'istanbul' | 'paris' | 'prague' | null {
+    if (this.currentStageIndex === 4) return 'algiers';
+    if (this.currentStageIndex === 9) return 'istanbul';
+    if (this.currentStageIndex === 14) return 'paris';
+    if (this.currentStageIndex === 18) return 'prague';
+    return null;
+  }
+
+  /** Opaque, layered cedar mountains with natural ridgelines and restrained tree silhouettes. */
+  private renderCedarMountainRange(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    const shift = this.cameraX * 0.045;
+    for (let layer = 0; layer < 3; layer++) {
+      const base = height * (0.79 + layer * 0.025);
+      const spacing = 620 + layer * 120;
+      for (let i = -2; i < Math.ceil(width / spacing) + 3; i++) {
+        const x = i * spacing - (shift * (1 + layer * 0.6) % spacing);
+        const peak = height * (0.38 + ((i * 7 + layer * 3) % 5) * 0.035);
+        const w = spacing * 1.12;
+        ctx.beginPath(); ctx.moveTo(x - 80, base);
+        ctx.bezierCurveTo(x + 30, base - 48, x + 75, peak + 110, x + w * 0.40, peak + 8);
+        ctx.bezierCurveTo(x + w * 0.52, peak - 16, x + w * 0.62, peak + 76, x + w + 80, base);
+        ctx.closePath();
+        const g = ctx.createLinearGradient(x, peak, x + w * 0.6, base);
+        g.addColorStop(0, layer === 0 ? '#263d50' : '#1a2c3a');
+        g.addColorStop(0.55, layer === 0 ? '#172c3a' : '#101f2a'); g.addColorStop(1, '#080f19');
+        ctx.fillStyle = g; ctx.fill();
+        // Cedar clusters sit on the slope and follow its contour.
+        if (layer < 2) for (let t = 0; t < 11; t++) {
+          const tx = x + 55 + t * (w - 100) / 10;
+          const ridge = peak + 18 + Math.pow((tx - (x + w * 0.4)) / (w * 0.58), 2) * (base - peak) * 0.70;
+          const th = 22 + ((i * 13 + t * 17 + layer * 9) % 26);
+          const tw = th * 0.42;
+          ctx.fillStyle = layer === 0 ? '#0d251f' : '#091a19';
+          ctx.beginPath(); ctx.moveTo(tx, ridge - th); ctx.quadraticCurveTo(tx - tw * 0.12, ridge - th * 0.55, tx - tw, ridge - th * 0.42);
+          ctx.quadraticCurveTo(tx - tw * 0.28, ridge - th * 0.34, tx - tw * 0.82, ridge - th * 0.08);
+          ctx.lineTo(tx + tw * 0.82, ridge - th * 0.08); ctx.quadraticCurveTo(tx + tw * 0.28, ridge - th * 0.34, tx + tw, ridge - th * 0.42);
+          ctx.quadraticCurveTo(tx + tw * 0.12, ridge - th * 0.55, tx, ridge - th); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#171d20'; ctx.fillRect(tx - 1.2, ridge - th * 0.12, 2.4, th * 0.25);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Distinct cinematic skylines: Algiers, Istanbul, Paris and old Prague. */
+  private renderCityBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number, city: 'algiers' | 'istanbul' | 'paris' | 'prague') {
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    const parallax = this.cameraX * 0.035;
+    const horizon = height * 0.79;
+    // Distant warm atmospheric city haze.
+    const haze = ctx.createLinearGradient(0, height * 0.34, 0, horizon);
+    haze.addColorStop(0, 'rgba(255,184,132,0)'); haze.addColorStop(1, city === 'paris' ? 'rgba(255,190,150,0.18)' : 'rgba(255,173,116,0.22)');
+    ctx.fillStyle = haze; ctx.fillRect(0, height * 0.3, width, horizon - height * 0.3);
+    // Continuous distant building mass, with individually varied rooflines.
+    ctx.fillStyle = city === 'paris' ? '#20283a' : '#172536';
+    for (let i = -1; i < 17; i++) {
+      const x = i * (width / 13) - (parallax % (width / 13));
+      const bw = width / 13 * (0.68 + (i % 3) * 0.08);
+      const bh = height * (0.10 + ((i * 11 + 17) % 7) * 0.018);
+      ctx.fillRect(x, horizon - bh, bw, bh);
+      ctx.fillStyle = 'rgba(255,205,145,0.42)';
+      for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) ctx.fillRect(x + 7 + col * 12, horizon - bh + 10 + row * 14, 3, 5);
+      ctx.fillStyle = city === 'paris' ? '#20283a' : '#172536';
+    }
+    if (city === 'algiers') {
+      // Monument des Martyrs: three unmistakable curved concrete leaves.
+      const mx = width * 0.31 - parallax * 0.5; const my = horizon - height * 0.20;
+      ctx.fillStyle = '#35404a';
+      for (let k = -1; k <= 1; k++) {
+        ctx.beginPath(); ctx.moveTo(mx + k * 24, my + 58); ctx.quadraticCurveTo(mx + k * 34 - 8, my + 8, mx + k * 13, my - 45); ctx.quadraticCurveTo(mx + k * 2, my - 60, mx + k * 8, my - 74); ctx.quadraticCurveTo(mx + k * 36, my - 36, mx + k * 38, my + 58); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#1c2934'; ctx.fillRect(mx - 57, my + 55, 114, 10);
+      // Suspension bridge with moving traffic.
+      const by = horizon - 58; ctx.strokeStyle = '#84909a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(width * .48, by); ctx.quadraticCurveTo(width * .70, by - 65, width * .94, by); ctx.stroke();
+      ctx.strokeStyle = '#64717c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(width * .50, by + 3); ctx.lineTo(width * .94, by + 3); ctx.stroke();
+      for (let i = 0; i < 11; i++) { const x = width * .52 + i * width * .038; ctx.beginPath(); ctx.moveTo(x, by - 3 - Math.sin(i / 10 * Math.PI) * 54); ctx.lineTo(x, by + 2); ctx.stroke(); }
+      for (let i = 0; i < 8; i++) { const x = (i * 77 + this.flameTimer * 48) % (width * .42) + width * .51; ctx.fillStyle = i % 2 ? '#e7c58e' : '#a8c5d9'; ctx.fillRect(x, by - 8, 12, 5); }
+      // A distant elevated metro line and train.
+      const railY = horizon - 115; ctx.strokeStyle = '#87949d'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(width * .58, railY + 16); ctx.lineTo(width * 1.02, railY + 16); ctx.stroke();
+      const trainX = width * .58 + ((this.flameTimer * 34) % (width * .39)); ctx.fillStyle = '#c7d5dc'; ctx.beginPath(); ctx.roundRect(trainX, railY - 2, 64, 16, 6); ctx.fill();
+      // A single aircraft crossing slowly in the upper sky.
+      const planeCycle = Math.floor(this.flameTimer / 38);
+      if (planeCycle !== this.lastAircraftPassCycle) { this.lastAircraftPassCycle = planeCycle; }
+      const planeX = ((this.flameTimer * 30) % (width + 100)) - 50; const planeY = height * .24;
+      ctx.fillStyle = '#111a29'; ctx.beginPath(); ctx.moveTo(planeX - 20, planeY); ctx.lineTo(planeX + 22, planeY - 2); ctx.lineTo(planeX + 30, planeY); ctx.lineTo(planeX + 22, planeY + 3); ctx.lineTo(planeX - 20, planeY + 2); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(planeX - 2, planeY); ctx.lineTo(planeX + 5, planeY - 10); ctx.lineTo(planeX + 10, planeY - 10); ctx.lineTo(planeX + 7, planeY + 1); ctx.fill();
+    } else if (city === 'istanbul') {
+      // Layered domes and slender minarets, all in a single continuous skyline.
+      for (let i = 0; i < 3; i++) {
+        const cx = width * (0.28 + i * 0.24) - parallax * .4; const base = horizon - 8; const r = 42 + i * 8;
+        ctx.fillStyle = '#25364a'; ctx.fillRect(cx - r, base - 34, r * 2, 34);
+        ctx.beginPath(); ctx.ellipse(cx, base - 34, r * .78, r * .48, 0, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.fillRect(cx - r - 8, base - 27, 10, 27); ctx.fillRect(cx + r - 2, base - 27, 10, 27);
+        for (const side of [-1, 1]) { const x = cx + side * (r + 12); ctx.fillRect(x - 3, base - 112, 6, 112); ctx.beginPath(); ctx.moveTo(x - 6, base - 112); ctx.lineTo(x, base - 128); ctx.lineTo(x + 6, base - 112); ctx.closePath(); ctx.fill(); ctx.fillRect(x - 7, base - 83, 14, 3); }
+      }
+      // Bosphorus waterline and ferry silhouettes.
+      ctx.fillStyle = 'rgba(35,87,111,0.34)'; ctx.fillRect(0, horizon - 3, width, 25);
+      const ferryX = ((this.flameTimer * 24) % (width + 120)) - 120; ctx.fillStyle = '#172536'; ctx.fillRect(ferryX, horizon - 25, 78, 13); ctx.beginPath(); ctx.moveTo(ferryX + 12, horizon - 25); ctx.lineTo(ferryX + 24, horizon - 36); ctx.lineTo(ferryX + 60, horizon - 36); ctx.lineTo(ferryX + 70, horizon - 25); ctx.fill();
+    } else if (city === 'paris') {
+      // Eiffel Tower: tapered lattice silhouette with four legs and cross-bracing.
+      const ex = width * .70 - parallax * .45; const base = horizon + 2; const top = height * .29;
+      ctx.strokeStyle = '#273447'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(ex - 48, base); ctx.lineTo(ex - 4, top); ctx.lineTo(ex + 4, top); ctx.lineTo(ex + 48, base); ctx.stroke();
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex - 30, base - 38); ctx.lineTo(ex + 30, base - 38); ctx.moveTo(ex - 19, base - 83); ctx.lineTo(ex + 19, base - 83); ctx.moveTo(ex - 10, base - 127); ctx.lineTo(ex + 10, base - 127); ctx.stroke();
+      for (let y = base - 25; y > top + 8; y -= 17) { const half = 45 * (y - top) / (base - top); ctx.beginPath(); ctx.moveTo(ex - half, y); ctx.lineTo(ex + half, y); ctx.stroke(); }
+      ctx.fillStyle = '#273447'; ctx.fillRect(ex - 6, top - 10, 12, 12);
+      // Paris rooftops.
+      for (let i = 0; i < 8; i++) { const x = i * width / 8; const y = horizon - 48 - (i % 3) * 12; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 25, y - 18); ctx.lineTo(x + 50, y); ctx.fill(); }
+    } else {
+      // Prague old town: steep slate roofs, clock tower and warm stone facades.
+      for (let i = 0; i < 7; i++) { const x = i * width / 7; const bw = width / 7 - 5; const bh = 72 + (i % 3) * 19; ctx.fillStyle = '#34404a'; ctx.fillRect(x, horizon - bh, bw, bh); ctx.fillStyle = '#202b39'; ctx.beginPath(); ctx.moveTo(x - 4, horizon - bh); ctx.lineTo(x + bw / 2, horizon - bh - 44); ctx.lineTo(x + bw + 4, horizon - bh); ctx.fill(); }
+      const tx = width * .52; ctx.fillStyle = '#3a4650'; ctx.fillRect(tx, horizon - 154, 46, 154); ctx.beginPath(); ctx.moveTo(tx - 5, horizon - 154); ctx.lineTo(tx + 23, horizon - 195); ctx.lineTo(tx + 51, horizon - 154); ctx.fill();
+      ctx.strokeStyle = '#d8c49b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tx + 23, horizon - 115, 13, 0, Math.PI * 2); ctx.stroke();
+    }
+    // Sparse animated traffic lights keep the skyline alive without clutter.
+    ctx.restore();
+  }
+
   /** Warm desert dawn: layered dunes, caravan silhouettes, palms and Bedouin tents. */
   private renderDesertSunrise(ctx: CanvasRenderingContext2D, width: number, height: number) {
-    const sunX = width * 0.72; const sunY = height * 0.43; const sunR = Math.min(width, height) * 0.17;
+    const sunX = width * 0.72; const sunR = Math.min(width, height) * 0.19;
+    const sunY = height * 0.755; const horizonY = sunY - sunR * 0.52;
     ctx.save(); ctx.globalCompositeOperation = 'screen';
     const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.18, sunX, sunY, sunR * 2.8);
     halo.addColorStop(0, 'rgba(255,190,105,0.40)'); halo.addColorStop(0.38, 'rgba(255,133,65,0.20)'); halo.addColorStop(1, 'rgba(255,110,55,0)');
     ctx.fillStyle = halo; ctx.fillRect(0, 0, width, height * 0.82);
     const sun = ctx.createRadialGradient(sunX - sunR * 0.22, sunY - sunR * 0.28, sunR * 0.08, sunX, sunY, sunR);
     sun.addColorStop(0, '#fff2c6'); sun.addColorStop(0.55, '#ffbd72'); sun.addColorStop(1, '#f07845');
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, width, horizonY); ctx.clip();
     ctx.fillStyle = sun; ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); ctx.restore();
+    // Ancient Egyptian silhouettes sit behind the dunes: distant pyramids and a palace terrace.
+    ctx.save();
+    ctx.globalAlpha = 0.52;
+    const ridgeY = height * 0.69;
+    const pyramid = (x: number, base: number, w: number, h: number) => {
+      const grad = ctx.createLinearGradient(x, base - h, x + w, base);
+      grad.addColorStop(0, '#60402f'); grad.addColorStop(0.52, '#392a27'); grad.addColorStop(1, '#241d20');
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x + w * 0.5, base - h); ctx.lineTo(x + w, base); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,202,132,0.12)'; ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x + w * 0.5, base - h); ctx.lineTo(x + w * 0.56, base); ctx.closePath(); ctx.fill();
+    };
+    pyramid(width * 0.07, ridgeY + 16, width * 0.20, height * 0.24);
+    pyramid(width * 0.25, ridgeY + 10, width * 0.14, height * 0.18);
+    pyramid(width * 0.82, ridgeY + 12, width * 0.19, height * 0.22);
+    // Cleopatra's palace: colonnaded sandstone pavilion with lotus-capital columns.
+    const palaceX = width * 0.48, palaceY = ridgeY + 13;
+    ctx.fillStyle = '#47302a'; ctx.fillRect(palaceX - 58, palaceY - 42, 116, 42);
+    ctx.fillStyle = '#6a4936'; ctx.fillRect(palaceX - 66, palaceY - 48, 132, 8);
+    ctx.beginPath(); ctx.moveTo(palaceX - 72, palaceY - 48); ctx.lineTo(palaceX, palaceY - 78); ctx.lineTo(palaceX + 72, palaceY - 48); ctx.closePath(); ctx.fill();
+    for (let c = -2; c <= 2; c++) { const x = palaceX + c * 24; ctx.fillStyle = '#b58a60'; ctx.fillRect(x - 4, palaceY - 39, 8, 39); ctx.beginPath(); ctx.ellipse(x, palaceY - 39, 8, 4, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     // Distant dune contours are broad, softly graded masses rather than geometric triangles.
     const dunes = [
@@ -2324,6 +2462,7 @@ export class GameEngine2D {
       ctx.beginPath(); ctx.ellipse(cx, cy, 128, 18, 0, 0, Math.PI * 2); ctx.ellipse(cx + 42, cy - 8, 66, 21, 0, 0, Math.PI * 2); ctx.ellipse(cx - 50, cy + 5, 57, 15, 0, 0, Math.PI * 2); ctx.fill();
     }
     if (storm) {
+      soundManager.startRainLoop();
       ctx.fillStyle = 'rgba(19,39,58,0.075)'; ctx.fillRect(0, 0, width, height);
       const rainCount = Math.min(340, Math.max(190, Math.floor(width * height / 2300)));
       for (let i = 0; i < rainCount; i++) {
@@ -2353,6 +2492,7 @@ export class GameEngine2D {
         ctx.shadowBlur = 0;
       }
     }
+    if (!storm) soundManager.stopRainLoop();
     if (desert) {
       // Wind-driven fine sand veils the lower and middle playfield, not just the sky.
       const veil = ctx.createLinearGradient(0, height * 0.32, 0, height);
@@ -2383,7 +2523,7 @@ export class GameEngine2D {
         direction,
       });
       if (Math.random() < 0.42) soundManager.playCrowCall();
-      this.crowSpawnTimer = 7 + Math.random() * 11;
+      this.crowSpawnTimer = 16 + Math.random() * 14;
     }
     for (const crow of this.crows) {
       crow.x += crow.speed * crow.direction * dt;
@@ -2401,7 +2541,8 @@ export class GameEngine2D {
     const y = height * 0.60;
     const scale = Math.max(0.62, Math.min(1.05, width / 900));
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
-    ctx.globalAlpha = 0.78;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#10182b';
     // Main keep and stepped curtain walls.
     ctx.beginPath(); ctx.moveTo(-175, 78); ctx.lineTo(-160, -15); ctx.lineTo(-112, -15); ctx.lineTo(-104, -76); ctx.lineTo(-63, -76); ctx.lineTo(-55, -18); ctx.lineTo(56, -18); ctx.lineTo(65, -90); ctx.lineTo(110, -90); ctx.lineTo(119, -18); ctx.lineTo(163, -18); ctx.lineTo(176, 78); ctx.closePath(); ctx.fill();
@@ -2616,54 +2757,37 @@ export class GameEngine2D {
         ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Dual Ethereal Wings of Flight
-        ctx.fillStyle = '#38bdf8';
-        ctx.beginPath();
-        ctx.moveTo(-16, 0);
-        ctx.quadraticCurveTo(-26, -14, -30, -4);
-        ctx.lineTo(-18, 4);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(16, 0);
-        ctx.quadraticCurveTo(26, -14, 30, -4);
-        ctx.lineTo(18, 4);
-        ctx.closePath();
-        ctx.fill();
-
-        // Inner Incandescent Diamond Core
-        ctx.save();
-        ctx.rotate(spin);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 12;
-        ctx.fillRect(-7, -7, 14, 14);
+        // Contemporary aero-prism: swept titanium fins around a luminous energy nucleus.
+        const fin = (side: number) => {
+          ctx.save(); ctx.scale(side, 1);
+          const wing = ctx.createLinearGradient(0, -15, 28, 12);
+          wing.addColorStop(0, '#e0fbff'); wing.addColorStop(.38, '#45d8f4'); wing.addColorStop(1, '#1763a5');
+          ctx.fillStyle = wing; ctx.beginPath(); ctx.moveTo(2, -3); ctx.lineTo(27, -17); ctx.quadraticCurveTo(23, -2, 13, 7); ctx.lineTo(3, 4); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = 'rgba(225,250,255,.75)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(23, -11); ctx.stroke(); ctx.restore();
+        };
+        fin(-1); fin(1);
+        ctx.save(); ctx.rotate(spin);
+        const core = ctx.createLinearGradient(-9, -9, 9, 9); core.addColorStop(0, '#ffffff'); core.addColorStop(.45, '#8df7ff'); core.addColorStop(1, '#1685d0');
+        ctx.fillStyle = core; ctx.shadowColor = '#54eaff'; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(8, 0); ctx.lineTo(0, 10); ctx.lineTo(-8, 0); ctx.closePath(); ctx.fill();
         ctx.restore();
       } else {
-        // 2. Vitality / Stamina Core (Warm Golden-Emerald Pulse)
-        const pulse = 14 + Math.sin(token.floatTimer * 2) * 3;
-
-        // Outer Golden Pulse
-        ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
-        ctx.shadowColor = '#facc15';
-        ctx.shadowBlur = 16;
-        ctx.beginPath();
-        ctx.arc(0, 0, pulse + 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Inner Vitality Core Orb
-        ctx.fillStyle = '#facc15';
-        ctx.beginPath();
-        ctx.arc(0, 0, pulse, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Vitality Cross Rune
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 8;
-        ctx.fillRect(-2.5, -8, 5, 16);
-        ctx.fillRect(-8, -2.5, 16, 5);
+        // 2. Aether-cell stamina capsule: a machined hex frame with an emerald energy core.
+        const pulse = 1 + Math.sin(token.floatTimer * 2.6) * 0.07;
+        ctx.scale(pulse, pulse);
+        ctx.shadowColor = '#55f2c1'; ctx.shadowBlur = 19;
+        const shell = ctx.createLinearGradient(-15, -16, 15, 16);
+        shell.addColorStop(0, '#e4fff5'); shell.addColorStop(.35, '#48d6ad'); shell.addColorStop(1, '#126b67');
+        ctx.fillStyle = shell; ctx.beginPath();
+        ctx.moveTo(0, -19); ctx.lineTo(15, -10); ctx.lineTo(15, 10); ctx.lineTo(0, 19); ctx.lineTo(-15, 10); ctx.lineTo(-15, -10); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(225,255,247,.9)'; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#062d31'; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(9, -6); ctx.lineTo(9, 6); ctx.lineTo(0, 12); ctx.lineTo(-9, 6); ctx.lineTo(-9, -6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#baffdf'; ctx.shadowColor = '#9fffe0'; ctx.shadowBlur = 9;
+        ctx.beginPath(); ctx.moveTo(2, -9); ctx.lineTo(-5, 1); ctx.lineTo(-1, 1); ctx.lineTo(-3, 9); ctx.lineTo(5, -2); ctx.lineTo(1, -2); ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(220,255,246,.75)'; ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) { const y = -5 + i * 5; ctx.beginPath(); ctx.moveTo(-22, y); ctx.lineTo(-17, y); ctx.moveTo(17, y); ctx.lineTo(22, y); ctx.stroke(); }
       }
 
       ctx.restore();
@@ -2711,7 +2835,14 @@ export class GameEngine2D {
     ctx.translate(this.x, this.y);
 
     const flicker1 = Math.sin(this.flameTimer * 16) * 4;
-    const flicker2 = Math.cos(this.flameTimer * 22) * 5;
+    const solar = this.flameSkin === 'solar';
+    const flicker2 = Math.cos(this.flameTimer * (solar ? 27 : 22)) * 5;
+    const outerTop = solar ? '#fff5c7' : '#dffcff';
+    const outerMid = solar ? '#ffcf70' : '#67e8f9';
+    const outerDeep = solar ? '#f97316' : '#0284c7';
+    const innerMid = solar ? '#fbbf24' : '#67e8f9';
+    const innerDeep = solar ? '#ea580c' : '#06b6d4';
+    const glowColor = solar ? '#fb923c' : '#0ea5e9';
 
     // HORIZONTAL SUPERSONIC ROCKET FLIGHT (عند الحصول على التوكن تنقلب الشخصية افقياً)
     if (this.isHorizontalFlightActive) {
@@ -2764,20 +2895,20 @@ export class GameEngine2D {
 
     // 1. Soft volumetric halo around the living flame.
     const halo = ctx.createRadialGradient(0, -7, 4, 0, -5, 58);
-    halo.addColorStop(0, 'rgba(103,232,249,0.34)');
-    halo.addColorStop(0.48, 'rgba(14,165,233,0.18)');
-    halo.addColorStop(1, 'rgba(2,132,199,0)');
+    halo.addColorStop(0, solar ? 'rgba(255,220,130,0.38)' : 'rgba(103,232,249,0.34)');
+    halo.addColorStop(0.48, solar ? 'rgba(249,115,22,0.20)' : 'rgba(14,165,233,0.18)');
+    halo.addColorStop(1, solar ? 'rgba(194,65,12,0)' : 'rgba(2,132,199,0)');
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.ellipse(0, -5, 58, 66, 0, 0, Math.PI * 2); ctx.fill();
 
     // 2. Outer sapphire shell: tapered, asymmetrical edges create a less rigid flame silhouette.
     const outerFire = ctx.createLinearGradient(0, -48, 0, 30);
-    outerFire.addColorStop(0, '#dffcff');
-    outerFire.addColorStop(0.18, '#67e8f9');
-    outerFire.addColorStop(0.55, '#0284c7');
-    outerFire.addColorStop(1, '#082f63');
+    outerFire.addColorStop(0, outerTop);
+    outerFire.addColorStop(0.18, outerMid);
+    outerFire.addColorStop(0.55, outerDeep);
+    outerFire.addColorStop(1, solar ? '#7c2d12' : '#082f63');
     ctx.fillStyle = outerFire;
-    ctx.shadowColor = '#0ea5e9'; ctx.shadowBlur = 22;
+    ctx.shadowColor = glowColor; ctx.shadowBlur = 22;
     ctx.beginPath();
     ctx.moveTo(0, 29);
     ctx.bezierCurveTo(-30 + flicker1, 19, -31 + flicker2, -8, -13 + flicker1 * 0.35, -29 + flicker2);
@@ -2787,8 +2918,8 @@ export class GameEngine2D {
     ctx.fill();
 
     // 3. Animated cyan tongues licking upward from the body.
-    ctx.save(); ctx.globalAlpha = 0.72; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 15;
-    ctx.fillStyle = '#22d3ee';
+    ctx.save(); ctx.globalAlpha = 0.78; ctx.shadowColor = solar ? '#f97316' : '#22d3ee'; ctx.shadowBlur = solar ? 20 : 15;
+    ctx.fillStyle = solar ? '#f59e0b' : '#22d3ee';
     const tongueLift = Math.sin(this.flameTimer * 19) * 5;
     ctx.beginPath(); ctx.moveTo(-13, 17); ctx.bezierCurveTo(-23, 2, -8, -10 - tongueLift, -7, -27 - tongueLift); ctx.bezierCurveTo(4, -12, -1, 4, -13, 17); ctx.fill();
     ctx.beginPath(); ctx.moveTo(10, 19); ctx.bezierCurveTo(21, 4, 8, -9 + tongueLift, 13, -31 + tongueLift); ctx.bezierCurveTo(25, -12, 24, 7, 10, 19); ctx.fill();
@@ -2796,12 +2927,12 @@ export class GameEngine2D {
 
     // 4. Hot cyan inner body with a bright center and darker molten edge.
     const innerFire = ctx.createLinearGradient(-16, -34, 15, 24);
-    innerFire.addColorStop(0, '#ecfeff');
-    innerFire.addColorStop(0.3, '#67e8f9');
-    innerFire.addColorStop(0.72, '#06b6d4');
-    innerFire.addColorStop(1, '#0369a1');
+    innerFire.addColorStop(0, solar ? '#fff7d6' : '#ecfeff');
+    innerFire.addColorStop(0.3, innerMid);
+    innerFire.addColorStop(0.72, innerDeep);
+    innerFire.addColorStop(1, solar ? '#9a3412' : '#0369a1');
     ctx.fillStyle = innerFire;
-    ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 25;
+    ctx.shadowColor = solar ? '#fb923c' : '#00f0ff'; ctx.shadowBlur = 25;
     ctx.beginPath();
     ctx.moveTo(0, 23);
     ctx.bezierCurveTo(-19 + flicker2, 11, -19 - flicker1, -9, 0, -37 + flicker2);
@@ -2810,7 +2941,7 @@ export class GameEngine2D {
 
     // 5. White-hot plasma core, narrow at the base and dancing at the tip.
     const coreFire = ctx.createLinearGradient(0, -27, 0, 18);
-    coreFire.addColorStop(0, '#ffffff'); coreFire.addColorStop(0.58, '#ecfeff'); coreFire.addColorStop(1, '#a5f3fc');
+    coreFire.addColorStop(0, '#ffffff'); coreFire.addColorStop(0.58, solar ? '#fff1b8' : '#ecfeff'); coreFire.addColorStop(1, solar ? '#fdba74' : '#a5f3fc');
     ctx.fillStyle = coreFire;
     ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 17;
     ctx.beginPath();
@@ -2820,13 +2951,27 @@ export class GameEngine2D {
     ctx.fill();
 
     // Fine incandescent filaments add motion without creating persistent screen-space trails.
-    ctx.save(); ctx.globalAlpha = 0.52; ctx.strokeStyle = '#e0fbff'; ctx.lineWidth = 1.2; ctx.shadowColor = '#67e8f9'; ctx.shadowBlur = 8;
+    ctx.save(); ctx.globalAlpha = 0.62; ctx.strokeStyle = solar ? '#fff0bd' : '#e0fbff'; ctx.lineWidth = 1.2; ctx.shadowColor = solar ? '#fb923c' : '#67e8f9'; ctx.shadowBlur = 8;
     ctx.beginPath(); ctx.moveTo(-8, 12); ctx.quadraticCurveTo(-15 + flicker1, -4, -5 + tongueLift * 0.25, -22); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(7, 13); ctx.quadraticCurveTo(15 + flicker2, -2, 8 - tongueLift * 0.2, -24); ctx.stroke();
     ctx.restore();
 
+    // Solar variant: a few short-lived incandescent motes orbit the flame core.
+    if (solar) {
+      ctx.save(); ctx.globalCompositeOperation = 'screen';
+      for (let ember = 0; ember < 5; ember++) {
+        const phase = this.flameTimer * (2.8 + ember * 0.13) + ember * Math.PI * 0.4;
+        const ex = Math.cos(phase) * (24 + (ember % 2) * 9);
+        const ey = -8 + Math.sin(phase * 1.25) * (25 + (ember % 3) * 3);
+        const r = 1.6 + (ember % 3) * 0.7;
+        ctx.fillStyle = ember % 2 ? '#fff0b0' : '#fb923c'; ctx.shadowColor = '#f97316'; ctx.shadowBlur = 11;
+        ctx.beginPath(); ctx.arc(ex, ey, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // 4. Twin Soul Eyes
-    ctx.fillStyle = '#0284c7';
+    ctx.fillStyle = solar ? '#9a3412' : '#0284c7';
     ctx.beginPath();
     ctx.arc(4, -4, 2.5, 0, Math.PI * 2);
     ctx.arc(10, -4, 2.5, 0, Math.PI * 2);
@@ -3618,6 +3763,7 @@ export class GameEngine2D {
     this.targetCameraZoom = 1.0;
     this.flightDuration = 0;
     this.isHorizontalFlightActive = false;
+    soundManager.stopCharacterFlight();
     this.stamina = this.maxStamina;
     this.reunionTimer = 0;
     this.spawnTimer = 0;
@@ -3680,6 +3826,7 @@ export class GameEngine2D {
   }
 
   public dispose() {
+    soundManager.stopCharacterFlight();
     this.isRunning = false;
     if (this.victoryTimer !== null) {
       clearTimeout(this.victoryTimer);

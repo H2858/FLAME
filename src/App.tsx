@@ -55,6 +55,7 @@ export default function App() {
   }));
 
   const [skills, setSkills] = useState<SkillLevels>(saveData.skillLevels);
+  const [flameSkin, setFlameSkin] = useState<'azure' | 'solar'>(() => saveData.flameSkin === 'solar' ? 'solar' : 'azure');
   const [settings, setSettings] = useState<GameSettings>(saveData.settings);
 
   // 20 Stages progress
@@ -90,7 +91,8 @@ export default function App() {
       newSkills?: SkillLevels,
       newSettings?: GameSettings,
       newUnlocked?: number,
-      newCompleted?: number[]
+      newCompleted?: number[],
+      newFlameSkin?: 'azure' | 'solar'
     ) => {
       const s = newStats || stats;
       const sk = newSkills || skills;
@@ -115,12 +117,13 @@ export default function App() {
         completedStages: comp,
         currentStageIndex: Math.max(0, Math.min(19, Math.max(stageIndex, un - 1))),
         settings: st,
+        flameSkin: newFlameSkin || flameSkin,
       };
 
       setSaveData(updated);
       saveGameData(updated);
     },
-    [saveData, stats, skills, settings, unlockedStage, completedStages, stageIndex]
+    [saveData, stats, skills, settings, flameSkin, unlockedStage, completedStages, stageIndex]
   );
 
   // Keep the engine's long-lived callbacks connected to the latest React state.
@@ -163,6 +166,7 @@ export default function App() {
       engine.stats = { ...statsRef.current };
       engine.skills = { ...skillsRef.current, fantasticalRecall: 1, celestialBeam: 1, orbitalWisps: 1, flameDash: 1, azureNova: 1, soulMagnet: 1 };
       engine.settings = { ...settingsRef.current };
+      engine.flameSkin = flameSkin;
       engine.setStage(stageIndexRef.current);
 
       engine.onStatsUpdate = (newStats) => {
@@ -259,6 +263,15 @@ export default function App() {
     }
 
     persist(newStats, newSkillLevels);
+  };
+
+  const handleBuySolarFlame = () => {
+    if (flameSkin === 'solar' || stats.souls < 450) return;
+    const nextStats = { ...stats, souls: stats.souls - 450 };
+    setFlameSkin('solar');
+    setStats(nextStats);
+    if (engineRef.current) { engineRef.current.flameSkin = 'solar'; engineRef.current.stats = nextStats; }
+    persist(nextStats, undefined, undefined, undefined, undefined, 'solar');
   };
 
   // Settings update handler
@@ -424,6 +437,8 @@ export default function App() {
           lang={settings.language}
           stats={stats}
           skills={skills}
+          flameSkin={flameSkin}
+          onBuySolarFlame={handleBuySolarFlame}
           onUpgradeSkill={handleUpgradeSkill}
           onClose={() => setShowUpgrades(false)}
         />

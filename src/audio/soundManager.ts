@@ -24,8 +24,69 @@ class SoundManager {
   private sfxVol = 0.85;
   private musicVol = 0.55;
   private vibrationEnabled = true;
+  private rainAudio: HTMLAudioElement | null = null;
+  private characterFlightAudio: HTMLAudioElement | null = null;
 
   constructor() {}
+
+  /** Play the supplied studio WAV assets; synthesized effects remain a fallback. */
+  private playAsset(file: string, volume = 1): boolean {
+    try {
+      const audio = new Audio(`/audio/${file}`);
+      audio.preload = 'auto';
+      audio.volume = Math.max(0, Math.min(1, this.masterVol * this.sfxVol * volume));
+      void audio.play().catch(() => {});
+      return true;
+    } catch { return false; }
+  }
+
+  public startRainLoop() {
+    try {
+      if (!this.rainAudio) {
+        this.rainAudio = new Audio('/audio/rain-loop.wav');
+        this.rainAudio.loop = true;
+        this.rainAudio.preload = 'auto';
+        this.rainAudio.volume = Math.min(1, this.masterVol * this.sfxVol * 0.32);
+      }
+      if (this.rainAudio.paused) void this.rainAudio.play().catch(() => {});
+    } catch { /* audio is optional */ }
+  }
+
+  public stopRainLoop() {
+    if (!this.rainAudio || this.rainAudio.paused) return;
+    this.rainAudio.pause();
+    this.rainAudio.currentTime = 0;
+  }
+
+  public playBossArrival() {
+    if (!this.playAsset('boss-arrival.wav', 0.9)) this.playNova();
+  }
+
+  public playFamilyArrival() {
+    if (!this.playAsset('family-reunion.wav', 0.95)) this.playFamilyRevealChime();
+  }
+
+  /** Character-only flight sound. The city aircraft intentionally has no link to this audio. */
+  public startCharacterFlight() {
+    try {
+      if (!this.characterFlightAudio) {
+        this.characterFlightAudio = new Audio('/audio/character-flight.wav');
+        this.characterFlightAudio.preload = 'auto';
+        this.characterFlightAudio.loop = true;
+      }
+      this.characterFlightAudio.volume = Math.max(0, Math.min(1, this.masterVol * this.sfxVol * 0.42));
+      if (this.characterFlightAudio.paused) {
+        this.characterFlightAudio.currentTime = 0;
+        void this.characterFlightAudio.play().catch(() => {});
+      }
+    } catch { /* audio is optional */ }
+  }
+
+  public stopCharacterFlight() {
+    if (!this.characterFlightAudio || this.characterFlightAudio.paused) return;
+    this.characterFlightAudio.pause();
+    this.characterFlightAudio.currentTime = 0;
+  }
 
   public init() {
     if (this.ctx) {
@@ -264,38 +325,9 @@ class SoundManager {
     }
   }
 
-  /**
-   * Soaring flame flight ascension thrust
-   */
+  /** Legacy alias retained for callers: start the character's flight audio. */
   public playFlyThrust() {
-    this.init();
-    if (!this.ctx || !this.sfxGain) return;
-    try {
-      const t = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      const filter = this.ctx.createBiquadFilter();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(180, t);
-      osc.frequency.exponentialRampToValueAtTime(320, t + 0.15);
-
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(500, t);
-
-      gain.gain.setValueAtTime(0.12, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.sfxGain);
-
-      osc.start(t);
-      osc.stop(t + 0.22);
-      this.playShapedNoise(0.18, 1400, 0.1);
-    } catch {
-      // ignore
-    }
+    this.startCharacterFlight();
   }
 
   /**
@@ -383,6 +415,7 @@ class SoundManager {
     this.init();
     if (!this.ctx || !this.sfxGain) return;
     this.triggerHaptics(comboIndex === 2 ? [30, 25, 45] : 14);
+    if (this.playAsset('sword-impact.wav', comboIndex === 2 ? 1 : 0.78)) return;
     if (comboIndex === 0) this.playKatanaDraw();
 
     try {

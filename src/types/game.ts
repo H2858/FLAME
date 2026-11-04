@@ -123,4 +123,5 @@ export interface CloudSaveData {
   totalEnemiesSlain: number;
   settings: GameSettings;
   cloudSyncId: string;
+  flameSkin?: 'azure' | 'solar';
 }
